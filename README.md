@@ -16,7 +16,7 @@ const request: Dispatcher.RequestOptions = {
     headersTimeout: 500,
 }
 
-await sendWithRetry(client, request, {
+const result = await sendWithRetry(client, request, {
     maxAttempts: 3,
     delayBetweenAttemptsInMsecs: 100,
     statusCodesToRetry: [500, 502, 503],
@@ -29,4 +29,22 @@ await sendWithRetry(client, request, {
     // Default is false
     safeParseJson: true, 
 })
+
+// If .error part of Either is set, request was not successful, and you will receive last error response
+if (result.error) {
+    console.log(JSON.stringify({
+        body: result.error.body,
+        headers: result.error.headers,
+        statusCode: result.error.statusCode,
+    }))
+}
+
+// If .result part of Either is set, request was successful either initially or after retrying, and you will receive the response
+if (result.result) {
+    console.log(JSON.stringify({
+        body: result.result.body,
+        headers: result.result.headers,
+        statusCode: result.result.statusCode,
+    }))
+}
 ```
