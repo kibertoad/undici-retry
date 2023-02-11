@@ -6,14 +6,14 @@ export type RequestErrorParams = {
   details?: ErrorDetails
 }
 
-export class RequestError extends Error {
+export class ResponseError extends Error {
   public readonly details?: ErrorDetails
   public readonly errorCode: string
-  public isRequestError = true
+  public isResponseError = true
 
   constructor(params: RequestErrorParams) {
     super(params.message)
-    this.name = 'RequestError'
+    this.name = 'ResponseError'
     this.details = params.details
     this.errorCode = params.errorCode
   }

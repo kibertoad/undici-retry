@@ -1,7 +1,7 @@
 import type { Client, Dispatcher } from 'undici'
 import type { IncomingHttpHeaders } from 'undici/types/header'
 import type { Either } from './either'
-import { RequestError } from './RequestError'
+import { ResponseError } from './ResponseError'
 import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
 
@@ -99,7 +99,7 @@ async function resolveBody(response: Dispatcher.ResponseData, safeParseJson = fa
     try {
       return JSON.parse(rawBody)
     } catch (err) {
-      throw new RequestError({
+      throw new ResponseError({
         message: 'Error while parsing HTTP JSON response',
         errorCode: 'INVALID_HTTP_RESPONSE_JSON',
         details: {
