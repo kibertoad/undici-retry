@@ -13,7 +13,7 @@ export type RequestResult<T> = {
   statusCode: number
 }
 
-export type RetrierConfig = {
+export type RetryConfig = {
   maxAttempts: number
   delayBetweenAttemptsInMsecs: number
   statusCodesToRetry: readonly number[]
@@ -21,7 +21,7 @@ export type RetrierConfig = {
   safeParseJson?: boolean
 }
 
-const DEFAULT_RETRIER_CONFIG: RetrierConfig = {
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 1,
   delayBetweenAttemptsInMsecs: 0,
   statusCodesToRetry: [],
@@ -32,7 +32,7 @@ const DEFAULT_RETRIER_CONFIG: RetrierConfig = {
 export async function sendWithRetry<T>(
   client: Client,
   request: Dispatcher.RequestOptions,
-  retryConfig: RetrierConfig = DEFAULT_RETRIER_CONFIG
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
 ): Promise<Either<RequestResult<unknown>, RequestResult<T>>> {
   let attemptsSoFar = 0
 
