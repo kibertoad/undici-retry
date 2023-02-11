@@ -50,7 +50,7 @@
     "error",
     "http",
     "client",
-    "https",
+    "https"
   ],
   "homepage": "https://github.com/kibertoad/undici-retry",
   "files": [
