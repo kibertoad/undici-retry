@@ -17,7 +17,7 @@ const request: Dispatcher.RequestOptions = {
     headersTimeout: 500,
 }
 
-const retryConfig = {
+const retryConfig: RetryConfig = {
     maxAttempts: 3,
     delayBetweenAttemptsInMsecs: 100,
     statusCodesToRetry: [500, 502, 503],
