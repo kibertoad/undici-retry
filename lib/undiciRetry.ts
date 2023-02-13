@@ -21,7 +21,7 @@ export type RetryConfig = {
   safeParseJson?: boolean
 }
 
-const DEFAULT_RETRY_CONFIG: RetryConfig = {
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 1,
   delayBetweenAttemptsInMsecs: 0,
   statusCodesToRetry: [],
