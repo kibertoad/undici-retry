@@ -6,8 +6,8 @@ Library for handling retry logic with undici HTTP client
 ```ts
 import { sendWithRetry } from 'undici-retry';
 import type { RetryConfig } from 'undici-retry'
-import { Client } from "undici";
-import type { Dispatcher } from "undici";
+import { Client } from 'undici';
+import type { Dispatcher } from 'undici';
 
 const client = new Client('http://my-url.com', {})
 const request: Dispatcher.RequestOptions = {
