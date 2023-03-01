@@ -242,7 +242,7 @@ describe('undiciRetry', () => {
   })
 
   it('return error response if error is not retriable', async () => {
-    await mockServer.forGet('/').thenReply(400, 'Invalid request')
+    await mockServer.forGet('/').thenReply(400, 'status message', 'Invalid request', {})
     await mockServer.forGet('/').thenReply(200, 'A mocked response2')
 
     const result = await sendWithRetry(client, request, {

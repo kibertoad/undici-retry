@@ -21,21 +21,21 @@
   "dependencies": {
   },
   "peerDependencies": {
-    "undici": "^5.18.0"
+    "undici": "^5.19.1"
   },
   "devDependencies": {
-    "@types/node": "^18.13.0",
+    "@types/node": "^18.14.2",
     "@typescript-eslint/eslint-plugin": "^5.51.0",
     "@typescript-eslint/parser": "^5.51.0",
-    "@vitest/coverage-c8": "^0.28.4",
-    "eslint": "^8.34.0",
+    "@vitest/coverage-c8": "0.28.5",
+    "eslint": "^8.35.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "mockttp": "^3.6.3",
+    "mockttp": "^3.7.0",
     "prettier": "^2.8.4",
     "typescript": "4.9.5",
-    "undici": "^5.18.0",
-    "vitest": "^0.28.4"
+    "undici": "^5.20.0",
+    "vitest": "0.28.5"
   },
   "engines": {
     "node": ">=16"
