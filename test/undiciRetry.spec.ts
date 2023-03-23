@@ -1,8 +1,8 @@
 import { Client } from 'undici'
 import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
-import { afterEach, expect } from 'vitest'
-import { sendWithRetry } from '../lib/undiciRetry'
+import { afterEach, beforeEach, it, expect } from 'vitest'
+import { DEFAULT_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
 
 const baseUrl = 'http://localhost:8080/'
 const JSON_HEADERS = {
@@ -46,6 +46,17 @@ describe('undiciRetry', () => {
     expect(response.result).toBeDefined()
     expect(response.result?.statusCode).toEqual(200)
     expect(response.result?.body).toEqual('A mocked response3')
+  })
+
+  it('default does not retry', async () => {
+    await mockServer.forGet('/').thenReply(500, 'A mocked response1')
+    await mockServer.forGet('/').thenReply(200, 'A mocked response3')
+
+    const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
+
+    expect(response.error).toBeDefined()
+    expect(response.error?.statusCode).toEqual(500)
+    expect(response.error?.body).toEqual('A mocked response1')
   })
 
   it('do not retry on success', async () => {
