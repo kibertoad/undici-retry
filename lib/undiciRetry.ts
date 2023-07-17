@@ -45,9 +45,10 @@ export async function sendWithRetry<T>(
 
       // success
       if (response.statusCode < 400) {
+        const resolvedBody = await resolveBody(response, retryConfig.blobBody, retryConfig.safeParseJson)
         return {
           result: {
-            body: await resolveBody(response, retryConfig.blobBody, retryConfig.safeParseJson),
+            body: resolvedBody,
             headers: response.headers,
             statusCode: response.statusCode,
           },
@@ -59,9 +60,10 @@ export async function sendWithRetry<T>(
         retryConfig.statusCodesToRetry.indexOf(response.statusCode) === -1 ||
         attemptsSoFar >= retryConfig.maxAttempts
       ) {
+        const resolvedBody = await resolveBody(response)
         return {
           error: {
-            body: await resolveBody(response, retryConfig.blobBody, retryConfig.safeParseJson),
+            body: resolvedBody,
             headers: response.headers,
             statusCode: response.statusCode,
           },
