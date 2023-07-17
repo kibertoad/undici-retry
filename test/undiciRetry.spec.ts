@@ -1,10 +1,10 @@
 import { Client } from 'undici'
 import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
-import { afterEach, beforeEach, it, expect } from 'vitest'
+import { describe, afterEach, beforeEach, it, expect } from 'vitest'
 import { DEFAULT_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
 
-const baseUrl = 'http://localhost:8080/'
+const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
   'content-type': 'application/json',
 }
@@ -23,7 +23,7 @@ const mockServer = getLocal()
 describe('undiciRetry', () => {
   let client: Client
   beforeEach(async () => {
-    await mockServer.start(8080)
+    await mockServer.start(4000)
     client = new Client(baseUrl)
   })
   afterEach(async () => {
@@ -265,5 +265,26 @@ describe('undiciRetry', () => {
 
     expect(result!.error!.statusCode).toBe(400)
     expect(result!.error!.body).toBe('Invalid request')
+  })
+
+  it('returns body as blob', async () => {
+    const mockedResponse = {
+      hello: 'world',
+    }
+    await mockServer.forGet('/').thenReply(200, 'ok', JSON.stringify(mockedResponse))
+
+    const response = await sendWithRetry(client, request, {
+      maxAttempts: 3,
+      delayBetweenAttemptsInMsecs: 0,
+      statusCodesToRetry: [500, 502, 503],
+      retryOnTimeout: false,
+      safeParseJson: true,
+      blobBody: true,
+    })
+
+    expect(response.result).toBeDefined()
+    expect(response.result?.statusCode).toEqual(200)
+    expect(response.result?.body).toBeInstanceOf(Blob)
+    expect(response.result?.body).toEqual(new Blob([JSON.stringify(mockedResponse)]))
   })
 })
