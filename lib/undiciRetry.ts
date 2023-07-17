@@ -31,11 +31,11 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   blobBody: false,
 }
 
-export async function sendWithRetry<T>(
+export async function sendWithRetry<T, const ConfigType extends RetryConfig>(
   client: Client,
   request: Dispatcher.RequestOptions,
-  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
-): Promise<Either<RequestResult<unknown>, RequestResult<T>>> {
+  retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType
+): Promise<Either<RequestResult<unknown>, RequestResult<ConfigType['blobBody'] extends true ? Blob : T>>> {
   let attemptsSoFar = 0
 
   while (true) {
