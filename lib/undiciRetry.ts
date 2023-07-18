@@ -31,7 +31,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   blobBody: false,
 }
 
-export async function sendWithRetry<T, const ConfigType extends RetryConfig>(
+export async function sendWithRetry<T, const ConfigType extends RetryConfig = RetryConfig>(
   client: Client,
   request: Dispatcher.RequestOptions,
   retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType
