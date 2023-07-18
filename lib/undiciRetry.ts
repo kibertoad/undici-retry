@@ -19,6 +19,7 @@ export type RetryConfig = {
   statusCodesToRetry: readonly number[]
   retryOnTimeout: boolean
   safeParseJson?: boolean
+  blobBody?: boolean
 }
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
@@ -27,13 +28,14 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   statusCodesToRetry: [],
   retryOnTimeout: false,
   safeParseJson: false,
+  blobBody: false,
 }
 
-export async function sendWithRetry<T>(
+export async function sendWithRetry<T, const ConfigType extends RetryConfig>(
   client: Client,
   request: Dispatcher.RequestOptions,
-  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
-): Promise<Either<RequestResult<unknown>, RequestResult<T>>> {
+  retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType
+): Promise<Either<RequestResult<unknown>, RequestResult<ConfigType['blobBody'] extends true ? Blob : T>>> {
   let attemptsSoFar = 0
 
   while (true) {
@@ -43,7 +45,7 @@ export async function sendWithRetry<T>(
 
       // success
       if (response.statusCode < 400) {
-        const resolvedBody = await resolveBody(response, retryConfig.safeParseJson)
+        const resolvedBody = await resolveBody(response, retryConfig.blobBody, retryConfig.safeParseJson)
         return {
           result: {
             body: resolvedBody,
@@ -88,7 +90,11 @@ export async function sendWithRetry<T>(
   }
 }
 
-async function resolveBody(response: Dispatcher.ResponseData, safeParseJson = false) {
+async function resolveBody(response: Dispatcher.ResponseData, blobBody = false, safeParseJson = false) {
+  if (blobBody) {
+    return await response.body.blob()
+  }
+
   // There can never be multiple content-type headers, see https://www.rfc-editor.org/rfc/rfc7230#section-3.2.2
   const contentType = response.headers['content-type'] as string | undefined
   if (contentType?.startsWith('application/json')) {
