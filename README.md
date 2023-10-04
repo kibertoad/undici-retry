@@ -51,3 +51,29 @@ if (result.result) {
     }))
 }
 ```
+
+## Delay resolvers
+
+You can write custom logic for resolving the retry delay based on response received. E. g.:
+
+```ts
+const OFFSET = 100
+
+const response = await sendWithRetry(client, request, {
+    maxAttempts: 3,
+    statusCodesToRetry: [429, 502, 503],
+    delayBetweenAttemptsInMsecs: 30,
+    retryOnTimeout: false,
+    delayResolver: (response) => {
+        if (response.statusCode === 429) {
+            return 60000 - (now % 60000) + OFFSET // this will wait until next minute so that request quota is refreshed
+        }
+        
+        if (response.statusCode === 500) {
+            return -1 // Do not retry
+        }
+        
+        return undefined // this will fallback to `delayBetweenAttemptsInMsecs` param
+    },
+})
+```

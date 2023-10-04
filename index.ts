@@ -1,4 +1,6 @@
 export { ResponseError } from './lib/ResponseError'
 export { sendWithRetry, DEFAULT_RETRY_CONFIG } from './lib/undiciRetry'
-export type { RetryConfig, RequestResult } from './lib/undiciRetry'
+export { createDelayToNextMinuteResolver } from './lib/delayResolvers'
+export type { CreateDelayToNextMinuteResolverConfig } from './lib/delayResolvers'
+export type { RetryConfig, RequestResult, DelayResolver } from './lib/undiciRetry'
 export type { Either } from './lib/either'
