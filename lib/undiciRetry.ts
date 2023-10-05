@@ -13,9 +13,12 @@ export type RequestResult<T> = {
   statusCode: number
 }
 
+export type DelayResolver = (response: Dispatcher.ResponseData) => number | undefined
+
 export type RetryConfig = {
   maxAttempts: number
-  delayBetweenAttemptsInMsecs: number
+  delayBetweenAttemptsInMsecs?: number
+  delayResolver?: DelayResolver
   statusCodesToRetry: readonly number[]
   retryOnTimeout: boolean
   safeParseJson?: boolean
@@ -34,7 +37,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
 export async function sendWithRetry<T, const ConfigType extends RetryConfig = RetryConfig>(
   client: Client,
   request: Dispatcher.RequestOptions,
-  retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType
+  retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType,
 ): Promise<Either<RequestResult<unknown>, RequestResult<ConfigType['blobBody'] extends true ? Blob : T>>> {
   let attemptsSoFar = 0
 
@@ -70,9 +73,31 @@ export async function sendWithRetry<T, const ConfigType extends RetryConfig = Re
         }
       }
 
-      // retry
-      // undici response body always has to be processed or discarded
-      await response.body.dump()
+      if (retryConfig.delayBetweenAttemptsInMsecs || retryConfig.delayResolver) {
+        const delay = retryConfig.delayResolver
+          ? retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0
+          : retryConfig.delayBetweenAttemptsInMsecs
+
+        // Do not retry
+        if (delay === -1) {
+          const resolvedBody = await resolveBody(response)
+          return {
+            error: {
+              body: resolvedBody,
+              headers: response.headers,
+              statusCode: response.statusCode,
+            },
+          }
+        } else {
+          // retry
+          // undici response body always has to be processed or discarded
+          await response.body.dump()
+        }
+
+        await setTimeout(delay)
+      } else {
+        await response.body.dump()
+      }
     } catch (err: any) {
       // on internal client error we can't do much; if there are still retries left, we retry, if not, we rethrow an error
 
@@ -82,10 +107,6 @@ export async function sendWithRetry<T, const ConfigType extends RetryConfig = Re
       ) {
         throw err
       }
-    }
-
-    if (retryConfig.delayBetweenAttemptsInMsecs > 0) {
-      await setTimeout(retryConfig.delayBetweenAttemptsInMsecs)
     }
   }
 }
