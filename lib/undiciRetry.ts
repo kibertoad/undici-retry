@@ -1,4 +1,4 @@
-import type { Client, Dispatcher } from 'undici'
+import type { Dispatcher } from 'undici'
 import type { IncomingHttpHeaders } from 'undici/types/header'
 import type { Either } from './either'
 import { ResponseError } from './ResponseError'
@@ -35,7 +35,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
 }
 
 export async function sendWithRetry<T, const ConfigType extends RetryConfig = RetryConfig>(
-  client: Client,
+  client: Dispatcher,
   request: Dispatcher.RequestOptions,
   retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType,
 ): Promise<Either<RequestResult<unknown>, RequestResult<ConfigType['blobBody'] extends true ? Blob : T>>> {

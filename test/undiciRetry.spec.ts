@@ -1,4 +1,4 @@
-import { Client } from 'undici'
+import { Client, Pool } from 'undici'
 import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
 import { describe, afterEach, beforeEach, it, expect } from 'vitest'
@@ -22,9 +22,11 @@ const mockServer = getLocal()
 
 describe('undiciRetry', () => {
   let client: Client
+  let pool: Pool
   beforeEach(async () => {
     await mockServer.start(4000)
     client = new Client(baseUrl)
+    pool = new Pool(baseUrl, { connections: 2 })
   })
   afterEach(async () => {
     await mockServer.stop()
@@ -287,6 +289,24 @@ describe('undiciRetry', () => {
       expect(response.result?.statusCode).toEqual(200)
       expect(response.result?.body).toBeInstanceOf(Blob)
       expect(response.result?.body).toEqual(new Blob([JSON.stringify(mockedResponse)]))
+    })
+
+    it('retry on specified status codes with pool', async () => {
+      await mockServer.forGet('/').thenReply(500, 'A mocked response1')
+      await mockServer.forGet('/').thenReply(502, 'A mocked response2')
+      await mockServer.forGet('/').thenReply(200, 'A mocked response3')
+      await mockServer.forGet('/').thenReply(200, 'A mocked response4')
+
+      const response = await sendWithRetry(pool, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+      expect(response.result?.body).toEqual('A mocked response3')
     })
   })
 
