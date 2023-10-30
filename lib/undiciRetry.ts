@@ -4,6 +4,7 @@ import type { Either } from './either'
 import { ResponseError } from './ResponseError'
 import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
+import { InternalRequestError } from './InternalRequestError'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
@@ -11,6 +12,12 @@ export type RequestResult<T> = {
   body: T
   headers: IncomingHttpHeaders
   statusCode: number
+  requestLabel?: string
+}
+
+export type RequestInternalError = {
+  error: Error
+  requestLabel?: string
 }
 
 export type DelayResolver = (response: Dispatcher.ResponseData) => number | undefined
@@ -26,6 +33,8 @@ export type RetryConfig = {
 export type RequestParams = {
   blobBody?: boolean
   safeParseJson?: boolean
+  requestLabel?: string
+  throwOnInternalError?: boolean
 }
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
@@ -45,7 +54,14 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
   request: Dispatcher.RequestOptions,
   retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG,
   requestParams: ConfigType = DEFAULT_REQUEST_PARAMS as ConfigType,
-): Promise<Either<RequestResult<unknown>, RequestResult<ConfigType['blobBody'] extends true ? Blob : T>>> {
+): Promise<
+  Either<
+    ConfigType['throwOnInternalError'] extends false
+      ? RequestResult<unknown> | RequestInternalError
+      : RequestResult<unknown>,
+    RequestResult<ConfigType['blobBody'] extends true ? Blob : T>
+  >
+> {
   let attemptsSoFar = 0
 
   while (true) {
@@ -93,6 +109,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
               body: resolvedBody,
               headers: response.headers,
               statusCode: response.statusCode,
+              requestLabel: requestParams.requestLabel,
             },
           }
         } else {
@@ -112,7 +129,21 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         attemptsSoFar >= retryConfig.maxAttempts ||
         (retryConfig.retryOnTimeout === false && TIMEOUT_ERRORS.indexOf(err.name) !== -1)
       ) {
-        throw err
+        if (requestParams.throwOnInternalError === false) {
+          return {
+            // @ts-ignore
+            error: {
+              error: err,
+              requestLabel: requestParams.requestLabel,
+            },
+          }
+        } else {
+          throw new InternalRequestError({
+            error: err,
+            message: err.message,
+            requestLabel: requestParams.requestLabel,
+          })
+        }
       }
     }
   }

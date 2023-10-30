@@ -9,7 +9,7 @@ export type RequestErrorParams = {
 export class ResponseError extends Error {
   public readonly details?: ErrorDetails
   public readonly errorCode: string
-  public isResponseError = true
+  public readonly isResponseError = true
 
   constructor(params: RequestErrorParams) {
     super(params.message)

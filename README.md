@@ -35,6 +35,9 @@ const requestParams: RequestParams = {
 
     // if true, response body will be returned as Blob
     blobBody: false,
+
+    // if set to false, in case of an internal error (e. g. ECONNREFUSED), error will be returned within an Either and not thrown
+    throwOnInternalError: true,
 }
 
 const result = await sendWithRetry(client, request, retryConfig, requestParams)

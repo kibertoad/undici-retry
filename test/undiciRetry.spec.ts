@@ -3,6 +3,7 @@ import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
 import { describe, afterEach, beforeEach, it, expect } from 'vitest'
 import { DEFAULT_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
+import { isInternalRequestError, isRequestResult } from '../lib/typeGuards'
 
 const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
@@ -294,6 +295,57 @@ describe('undiciRetry', () => {
       expect(result!.error!.body).toBe('Invalid request')
     })
 
+    it('return internal errors if throwOnInternalError = false', async () => {
+      const result = await sendWithRetry(
+        new Client('http://127.0.0.1'),
+        request,
+        {
+          maxAttempts: 2,
+          delayBetweenAttemptsInMsecs: 10,
+          statusCodesToRetry: [500, 502, 503],
+          retryOnTimeout: false,
+        },
+        {
+          requestLabel: 'label',
+          throwOnInternalError: false,
+        },
+      )
+
+      if (!isInternalRequestError(result.error)) {
+        throw new Error('Invalid error tye')
+      }
+
+      expect(result.error.error.message).toBe('connect ECONNREFUSED 127.0.0.1:80')
+      expect(result.error.requestLabel).toBe('label')
+    })
+
+    it('throw internal errors if throwOnInternalError = true', async () => {
+      expect.assertions(2)
+      try {
+        await sendWithRetry(
+          new Client('http://127.0.0.1'),
+          request,
+          {
+            maxAttempts: 2,
+            delayBetweenAttemptsInMsecs: 10,
+            statusCodesToRetry: [500, 502, 503],
+            retryOnTimeout: false,
+          },
+          {
+            requestLabel: 'label',
+            throwOnInternalError: true,
+          },
+        )
+      } catch (err: any) {
+        if (!isInternalRequestError(err)) {
+          throw new Error('wrong error type')
+        }
+
+        expect(err.error.message).toBe('connect ECONNREFUSED 127.0.0.1:80')
+        expect(err.requestLabel).toBe('label')
+      }
+    })
+
     it('returns body as blob', async () => {
       const mockedResponse = {
         hello: 'world',
@@ -358,6 +410,10 @@ describe('undiciRetry', () => {
           return -1
         },
       })
+
+      if (!isRequestResult(response.error)) {
+        throw new Error('invalid result type')
+      }
 
       expect(response.error).toBeDefined()
       expect(response.error?.statusCode).toEqual(502)
