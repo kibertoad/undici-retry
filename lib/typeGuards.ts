@@ -3,7 +3,7 @@ import { ResponseError } from './ResponseError'
 import { InternalRequestError } from './InternalRequestError'
 
 export function isRequestInternalError(entity: unknown): entity is RequestInternalError {
-  return 'error' in (entity as RequestInternalError)
+  return 'error' in (entity as RequestInternalError) && 'requestLabel' in (entity as RequestInternalError)
 }
 
 export function isInternalRequestError(entity: unknown): entity is InternalRequestError {
