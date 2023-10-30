@@ -84,13 +84,19 @@ describe('undiciRetry', () => {
       expect.assertions(1)
 
       try {
-        await sendWithRetry(client, request, {
-          maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 0,
-          statusCodesToRetry: [500, 502, 503],
-          retryOnTimeout: false,
-          safeParseJson: true,
-        })
+        await sendWithRetry(
+          client,
+          request,
+          {
+            maxAttempts: 3,
+            delayBetweenAttemptsInMsecs: 0,
+            statusCodesToRetry: [500, 502, 503],
+            retryOnTimeout: false,
+          },
+          {
+            safeParseJson: true,
+          },
+        )
       } catch (err: any) {
         expect(err.message).toBe('Error while parsing HTTP JSON response')
       }
@@ -100,13 +106,19 @@ describe('undiciRetry', () => {
       await mockServer.forGet('/').thenReply(502, 'err', 'Not actually a JSON', JSON_HEADERS)
       await mockServer.forGet('/').thenReply(200, 'A mocked response2')
 
-      const response = await sendWithRetry(client, request, {
-        maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 50,
-        statusCodesToRetry: [500, 502, 503],
-        retryOnTimeout: false,
-        safeParseJson: true,
-      })
+      const response = await sendWithRetry(
+        client,
+        request,
+        {
+          maxAttempts: 3,
+          delayBetweenAttemptsInMsecs: 50,
+          statusCodesToRetry: [500, 502, 503],
+          retryOnTimeout: false,
+        },
+        {
+          safeParseJson: true,
+        },
+      )
 
       expect(response.result).toBeDefined()
       expect(response.result?.statusCode).toEqual(200)
@@ -116,13 +128,19 @@ describe('undiciRetry', () => {
     it('handles non-json content', async () => {
       await mockServer.forGet('/').thenReply(200, 'err', 'Not actually a JSON', TEXT_HEADERS)
 
-      const response = await sendWithRetry(client, request, {
-        maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
-        statusCodesToRetry: [500, 502, 503],
-        retryOnTimeout: false,
-        safeParseJson: true,
-      })
+      const response = await sendWithRetry(
+        client,
+        request,
+        {
+          maxAttempts: 3,
+          delayBetweenAttemptsInMsecs: 0,
+          statusCodesToRetry: [500, 502, 503],
+          retryOnTimeout: false,
+        },
+        {
+          safeParseJson: true,
+        },
+      )
 
       expect(response.result).toBeDefined()
       expect(response.result?.statusCode).toEqual(200)
@@ -139,13 +157,19 @@ describe('undiciRetry', () => {
         JSON_HEADERS,
       )
 
-      const response = await sendWithRetry(client, request, {
-        maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
-        statusCodesToRetry: [500, 502, 503],
-        retryOnTimeout: false,
-        safeParseJson: false,
-      })
+      const response = await sendWithRetry(
+        client,
+        request,
+        {
+          maxAttempts: 3,
+          delayBetweenAttemptsInMsecs: 0,
+          statusCodesToRetry: [500, 502, 503],
+          retryOnTimeout: false,
+        },
+        {
+          safeParseJson: false,
+        },
+      )
 
       expect(response.result).toBeDefined()
       expect(response.result?.statusCode).toEqual(200)
@@ -276,14 +300,20 @@ describe('undiciRetry', () => {
       }
       await mockServer.forGet('/').thenReply(200, 'ok', JSON.stringify(mockedResponse))
 
-      const response = await sendWithRetry(client, request, {
-        maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
-        statusCodesToRetry: [500, 502, 503],
-        retryOnTimeout: false,
-        safeParseJson: true,
-        blobBody: true,
-      })
+      const response = await sendWithRetry(
+        client,
+        request,
+        {
+          maxAttempts: 3,
+          delayBetweenAttemptsInMsecs: 0,
+          statusCodesToRetry: [500, 502, 503],
+          retryOnTimeout: false,
+        },
+        {
+          safeParseJson: true,
+          blobBody: true,
+        },
+      )
 
       expect(response.result).toBeDefined()
       expect(response.result?.statusCode).toEqual(200)

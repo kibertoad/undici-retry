@@ -5,7 +5,7 @@ Library for handling retry logic with undici HTTP client
 
 ```ts
 import { sendWithRetry } from 'undici-retry';
-import type { RetryConfig } from 'undici-retry'
+import type { RetryConfig, RequestParams} from 'undici-retry'
 import { Client } from 'undici';
 import type { Dispatcher } from 'undici';
 
@@ -25,13 +25,19 @@ const retryConfig: RetryConfig = {
     // If true, will retry within given limits if request times out
     retryOnTimeout: false,
 
+}
+
+const requestParams: RequestParams = {
     // if true, preserves original body as text and returns it as a part of error data if parsing as JSON is failed
     // Can be slightly slower than direct parsing of body as json
     // Default is false
     safeParseJson: true,
+
+    // if true, response body will be returned as Blob
+    blobBody: false,
 }
 
-const result = await sendWithRetry(client, request, retryConfig)
+const result = await sendWithRetry(client, request, retryConfig, requestParams)
 
 // If .error part of Either is set, request was not successful, and you will receive last error response
 if (result.error) {
