@@ -1,3 +1,5 @@
+import { ErrorDetails } from './commonTypes'
+
 export type RequestErrorParams = {
   message: string
   error: Error
@@ -5,14 +7,16 @@ export type RequestErrorParams = {
 }
 
 export class InternalRequestError extends Error {
+  public readonly details?: ErrorDetails
   public readonly error: Error
-  public readonly requestLabel?: string
   public readonly isInternalRequestError = true
 
   constructor(params: RequestErrorParams) {
     super(params.message)
     this.name = 'InternalRequestError'
+    this.details = {
+      requestLabel: params.requestLabel,
+    }
     this.error = params.error
-    this.requestLabel = params.requestLabel
   }
 }

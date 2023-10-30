@@ -8,7 +8,7 @@ export default defineConfig({
     reporters: ['verbose'],
     coverage: {
       include: ['lib/**/*.ts'],
-      exclude: ['lib/either.ts'],
+      exclude: ['lib/either.ts', 'lib/commonTypes.ts'],
       reporter: ['lcov', "text", "html"],
       all: true,
       lines: 100,

@@ -5,10 +5,12 @@ import { ResponseError } from './ResponseError'
 import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
 import { InternalRequestError } from './InternalRequestError'
+import { isResponseError } from './typeGuards'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
 export type RequestResult<T> = {
+  error?: never
   body: T
   headers: IncomingHttpHeaders
   statusCode: number
@@ -18,6 +20,9 @@ export type RequestResult<T> = {
 export type RequestInternalError = {
   error: Error
   requestLabel?: string
+  body?: never
+  headers?: never
+  statusCode?: never
 }
 
 export type DelayResolver = (response: Dispatcher.ResponseData) => number | undefined
@@ -71,7 +76,12 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
 
       // success
       if (response.statusCode < 400) {
-        const resolvedBody = await resolveBody(response, requestParams.blobBody, requestParams.safeParseJson)
+        const resolvedBody = await resolveBody(
+          response,
+          requestParams.requestLabel,
+          requestParams.blobBody,
+          requestParams.safeParseJson,
+        )
         return {
           result: {
             body: resolvedBody,
@@ -86,7 +96,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         retryConfig.statusCodesToRetry.indexOf(response.statusCode) === -1 ||
         attemptsSoFar >= retryConfig.maxAttempts
       ) {
-        const resolvedBody = await resolveBody(response)
+        const resolvedBody = await resolveBody(response, requestParams.requestLabel)
         return {
           error: {
             body: resolvedBody,
@@ -103,7 +113,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
 
         // Do not retry
         if (delay === -1) {
-          const resolvedBody = await resolveBody(response)
+          const resolvedBody = await resolveBody(response, requestParams.requestLabel)
           return {
             error: {
               body: resolvedBody,
@@ -124,7 +134,6 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
       }
     } catch (err: any) {
       // on internal client error we can't do much; if there are still retries left, we retry, if not, we rethrow an error
-
       if (
         attemptsSoFar >= retryConfig.maxAttempts ||
         (retryConfig.retryOnTimeout === false && TIMEOUT_ERRORS.indexOf(err.name) !== -1)
@@ -135,9 +144,13 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
             error: {
               error: err,
               requestLabel: requestParams.requestLabel,
-            },
+            } satisfies RequestInternalError,
           }
         } else {
+          if (isResponseError(err)) {
+            throw err
+          }
+
           throw new InternalRequestError({
             error: err,
             message: err.message,
@@ -149,7 +162,12 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
   }
 }
 
-async function resolveBody(response: Dispatcher.ResponseData, blobBody = false, safeParseJson = false) {
+async function resolveBody(
+  response: Dispatcher.ResponseData,
+  requestLabel: string = 'N/A',
+  blobBody = false,
+  safeParseJson = false,
+) {
   if (blobBody) {
     return await response.body.blob()
   }
@@ -167,6 +185,7 @@ async function resolveBody(response: Dispatcher.ResponseData, blobBody = false, 
       throw new ResponseError({
         message: 'Error while parsing HTTP JSON response',
         errorCode: 'INVALID_HTTP_RESPONSE_JSON',
+        requestLabel,
         details: {
           rawBody,
         },

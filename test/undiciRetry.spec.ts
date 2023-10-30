@@ -3,7 +3,7 @@ import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
 import { describe, afterEach, beforeEach, it, expect } from 'vitest'
 import { DEFAULT_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
-import { isInternalRequestError, isRequestResult } from '../lib/typeGuards'
+import { isInternalRequestError, isRequestInternalError, isRequestResult, isResponseError } from '../lib/typeGuards'
 
 const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
@@ -82,7 +82,7 @@ describe('undiciRetry', () => {
 
     it('propagates error in case of invalid response content-type if no retries left', async () => {
       await mockServer.forGet('/').thenReply(200, 'err', 'Not actually a JSON', JSON_HEADERS)
-      expect.assertions(1)
+      expect.assertions(2)
 
       try {
         await sendWithRetry(
@@ -96,10 +96,16 @@ describe('undiciRetry', () => {
           },
           {
             safeParseJson: true,
+            requestLabel: 'label',
           },
         )
       } catch (err: any) {
+        if (!isResponseError(err)) {
+          throw new Error('invalid response type')
+        }
+
         expect(err.message).toBe('Error while parsing HTTP JSON response')
+        expect(err.details!.requestLabel).toBe('label')
       }
     })
 
@@ -311,7 +317,7 @@ describe('undiciRetry', () => {
         },
       )
 
-      if (!isInternalRequestError(result.error)) {
+      if (!isRequestInternalError(result.error)) {
         throw new Error('Invalid error tye')
       }
 
@@ -342,7 +348,7 @@ describe('undiciRetry', () => {
         }
 
         expect(err.error.message).toBe('connect ECONNREFUSED 127.0.0.1:80')
-        expect(err.requestLabel).toBe('label')
+        expect(err.details!.requestLabel).toBe('label')
       }
     })
 
