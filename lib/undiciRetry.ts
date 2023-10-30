@@ -144,7 +144,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
             error: {
               error: err,
               requestLabel: requestParams.requestLabel,
-            },
+            } satisfies RequestInternalError,
           }
         } else {
           if (isResponseError(err)) {

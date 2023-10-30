@@ -1,4 +1,4 @@
-export type ErrorDetails = Record<string, unknown>
+import { ErrorDetails } from './commonTypes'
 
 export type RequestErrorParams = {
   message: string
@@ -10,14 +10,15 @@ export type RequestErrorParams = {
 export class ResponseError extends Error {
   public readonly details?: ErrorDetails
   public readonly errorCode: string
-  public readonly requestLabel?: string
   public readonly isResponseError = true
 
   constructor(params: RequestErrorParams) {
     super(params.message)
     this.name = 'ResponseError'
-    this.details = params.details
+    this.details = {
+      ...params.details,
+      requestLabel: params.requestLabel,
+    }
     this.errorCode = params.errorCode
-    this.requestLabel = params.requestLabel
   }
 }
