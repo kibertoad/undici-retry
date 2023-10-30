@@ -21,8 +21,11 @@ export type RetryConfig = {
   delayResolver?: DelayResolver
   statusCodesToRetry: readonly number[]
   retryOnTimeout: boolean
-  safeParseJson?: boolean
+}
+
+export type RequestParams = {
   blobBody?: boolean
+  safeParseJson?: boolean
 }
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
@@ -30,14 +33,18 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   delayBetweenAttemptsInMsecs: 0,
   statusCodesToRetry: [],
   retryOnTimeout: false,
-  safeParseJson: false,
-  blobBody: false,
 }
 
-export async function sendWithRetry<T, const ConfigType extends RetryConfig = RetryConfig>(
+export const DEFAULT_REQUEST_PARAMS: RequestParams = {
+  blobBody: false,
+  safeParseJson: false,
+}
+
+export async function sendWithRetry<T, const ConfigType extends RequestParams = RequestParams>(
   client: Dispatcher,
   request: Dispatcher.RequestOptions,
-  retryConfig: ConfigType = DEFAULT_RETRY_CONFIG as ConfigType,
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG,
+  requestParams: ConfigType = DEFAULT_REQUEST_PARAMS as ConfigType,
 ): Promise<Either<RequestResult<unknown>, RequestResult<ConfigType['blobBody'] extends true ? Blob : T>>> {
   let attemptsSoFar = 0
 
@@ -48,7 +55,7 @@ export async function sendWithRetry<T, const ConfigType extends RetryConfig = Re
 
       // success
       if (response.statusCode < 400) {
-        const resolvedBody = await resolveBody(response, retryConfig.blobBody, retryConfig.safeParseJson)
+        const resolvedBody = await resolveBody(response, requestParams.blobBody, requestParams.safeParseJson)
         return {
           result: {
             body: resolvedBody,
