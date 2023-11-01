@@ -18,21 +18,29 @@ describe('retryAfterResolver', () => {
       'Retry-After': '30',
     })
 
-    expect(resolvedRetryDelay).toBe(30000)
+    expect(resolvedRetryDelay.result).toBe(30000)
   })
 
-  it('Ignores decimal part', () => {
+  it('Resolves retry time from header in seconds, capped by maximum', () => {
+    const resolvedRetryDelay = resolveDelayTime({
+      'Retry-After': '900',
+    })
+
+    expect(resolvedRetryDelay.error).toBe('max_delay_exceeded')
+  })
+
+  it('Returns undefined if there is a decimal part', () => {
     const resolvedRetryDelay = resolveDelayTime({
       'Retry-After': '30.5',
     })
 
-    expect(resolvedRetryDelay).toBe(30000)
+    expect(resolvedRetryDelay.error).toBe('unknown_format')
   })
 
   it('Returns undefined if header is not set', () => {
     const resolvedRetryDelay = resolveDelayTime({})
 
-    expect(resolvedRetryDelay).toBe(undefined)
+    expect(resolvedRetryDelay.error).toBe('header_not_set')
   })
 
   it('Returns undefined if header is in unknown format', () => {
@@ -40,22 +48,36 @@ describe('retryAfterResolver', () => {
       'Retry-After': 'dummy',
     })
 
-    expect(resolvedRetryDelay).toBe(undefined)
+    expect(resolvedRetryDelay.error).toBe('unknown_format')
   })
 
   it('Returns retry time if header is an HTTP date', () => {
-    const resolvedRetryDelay = resolveDelayTime({
-      'Retry-After': 'Fri, 31 Dec 2023 23:59:59 GMT',
-    })
+    const resolvedRetryDelay = resolveDelayTime(
+      {
+        'Retry-After': 'Fri, 31 Dec 2023 23:59:59 GMT',
+      },
+      25000000,
+    )
 
-    expect(resolvedRetryDelay).toBe(21175568)
+    expect(resolvedRetryDelay.result).toBe(21175568)
   })
 
   it('Returns retry time if header is a timestamp', () => {
+    const resolvedRetryDelay = resolveDelayTime(
+      {
+        'Retry-After': '2023-12-31T20:00:00.000Z',
+      },
+      7000000,
+    )
+
+    expect(resolvedRetryDelay.result).toBe(6776568)
+  })
+
+  it('Returns maximum exceeded error for a timestamp', () => {
     const resolvedRetryDelay = resolveDelayTime({
       'Retry-After': '2023-12-31T20:00:00.000Z',
     })
 
-    expect(resolvedRetryDelay).toBe(6776568)
+    expect(resolvedRetryDelay.error).toBe('max_delay_exceeded')
   })
 })
