@@ -6,6 +6,7 @@ import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
 import { InternalRequestError } from './InternalRequestError'
 import { isResponseError } from './typeGuards'
+import { resolveDelayTime } from './retryAfterResolver'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
@@ -33,6 +34,8 @@ export type RetryConfig = {
   delayResolver?: DelayResolver
   statusCodesToRetry: readonly number[]
   retryOnTimeout: boolean
+  respectRetryAfter?: boolean
+  maxRetryAfterInMsecs?: number
 }
 
 export type RequestParams = {
@@ -43,9 +46,19 @@ export type RequestParams = {
 }
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 3,
+  delayBetweenAttemptsInMsecs: 100,
+  statusCodesToRetry: [429, 500, 502, 503, 504],
+  retryOnTimeout: false,
+  respectRetryAfter: true,
+  maxRetryAfterInMsecs: 60000,
+}
+
+export const NO_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 1,
   delayBetweenAttemptsInMsecs: 0,
   statusCodesToRetry: [],
+  respectRetryAfter: false,
   retryOnTimeout: false,
 }
 
@@ -106,10 +119,29 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         }
       }
 
-      if (retryConfig.delayBetweenAttemptsInMsecs || retryConfig.delayResolver) {
-        const delay = retryConfig.delayResolver
-          ? retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0
-          : retryConfig.delayBetweenAttemptsInMsecs
+      if (retryConfig.delayBetweenAttemptsInMsecs || retryConfig.delayResolver || response.statusCode === 429) {
+        let delay: number | undefined
+
+        // TOO_MANY_REQUESTS
+        if (
+          retryConfig.respectRetryAfter !== false &&
+          response.statusCode === 429 &&
+          'retry-after' in response.headers
+        ) {
+          const delayResolutionResult = resolveDelayTime(response.headers, retryConfig.maxRetryAfterInMsecs)
+          if (delayResolutionResult.result) {
+            delay = delayResolutionResult.result
+          }
+          if (delayResolutionResult.error === 'max_delay_exceeded') {
+            delay = -1
+          }
+        }
+
+        if (delay === undefined) {
+          delay = retryConfig.delayResolver
+            ? retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0
+            : retryConfig.delayBetweenAttemptsInMsecs
+        }
 
         // Do not retry
         if (delay === -1) {
