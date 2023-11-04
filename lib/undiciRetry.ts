@@ -34,6 +34,7 @@ export type RetryConfig = {
   delayResolver?: DelayResolver
   statusCodesToRetry: readonly number[]
   retryOnTimeout: boolean
+  respectRetryAfter?: boolean
   maxRetryAfterInMsecs?: number
 }
 
@@ -49,6 +50,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   delayBetweenAttemptsInMsecs: 100,
   statusCodesToRetry: [429, 500, 502, 503, 504],
   retryOnTimeout: false,
+  respectRetryAfter: true,
   maxRetryAfterInMsecs: 60000,
 }
 
@@ -56,6 +58,7 @@ export const NO_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 1,
   delayBetweenAttemptsInMsecs: 0,
   statusCodesToRetry: [],
+  respectRetryAfter: false,
   retryOnTimeout: false,
 }
 
@@ -120,7 +123,11 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         let delay: number | undefined
 
         // TOO_MANY_REQUESTS
-        if (response.statusCode === 429 && 'retry-after' in response.headers) {
+        if (
+          retryConfig.respectRetryAfter !== false &&
+          response.statusCode === 429 &&
+          'retry-after' in response.headers
+        ) {
           const delayResolutionResult = resolveDelayTime(response.headers, retryConfig.maxRetryAfterInMsecs)
           if (delayResolutionResult.result) {
             delay = delayResolutionResult.result

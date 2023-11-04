@@ -20,7 +20,8 @@ const request: Dispatcher.RequestOptions = {
 const retryConfig: RetryConfig = {
     maxAttempts: 3,
     delayBetweenAttemptsInMsecs: 100,
-    statusCodesToRetry: [429, 500, 502, 503, 504], // note that if 429 is included, delay will be automatically calculated from 'Retry-After' header if present
+    statusCodesToRetry: [429, 500, 502, 503, 504], 
+    respectRetryAfter: true, // if 429 is included in "statusCodesToRetry" and this set to true, delay will be automatically calculated from 'Retry-After' header if present. Default is "true"
 
     // If true, will retry within given limits if request times out
     retryOnTimeout: false,

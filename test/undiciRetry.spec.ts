@@ -503,6 +503,22 @@ describe('undiciRetry', () => {
       expect(response.error.statusCode).toBe(429)
     })
 
+    it('ignores RetryAfter if flag is sent to false', async () => {
+      await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
+        // @ts-ignore
+        'Retry-After': 90,
+      })
+      await mockServer.forGet('/').thenReply(200, 'A mocked response3')
+
+      const response = await sendWithRetry(client, request, {
+        ...DEFAULT_RETRY_CONFIG,
+        respectRetryAfter: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result.statusCode).toBe(200)
+    })
+
     it('retries if retry-after is short enought', async () => {
       await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
         // @ts-ignore
