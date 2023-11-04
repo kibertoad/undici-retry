@@ -2,7 +2,7 @@ import { Client, Pool } from 'undici'
 import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
 import { describe, afterEach, beforeEach, it, expect } from 'vitest'
-import { DEFAULT_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
+import { DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
 import { isInternalRequestError, isRequestInternalError, isRequestResult, isResponseError } from '../lib/typeGuards'
 
 const baseUrl = 'http://localhost:4000/'
@@ -56,7 +56,7 @@ describe('undiciRetry', () => {
       await mockServer.forGet('/').thenReply(500, 'A mocked response1')
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
 
-      const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
+      const response = await sendWithRetry(client, request, NO_RETRY_CONFIG)
 
       expect(response.error).toBeDefined()
       expect(response.error?.statusCode).toEqual(500)
@@ -303,7 +303,7 @@ describe('undiciRetry', () => {
 
     it('return internal errors if throwOnInternalError = false', async () => {
       const result = await sendWithRetry(
-        new Client('http://127.0.0.1'),
+        new Client('http://127.0.0.1:999'),
         request,
         {
           maxAttempts: 2,
@@ -318,10 +318,10 @@ describe('undiciRetry', () => {
       )
 
       if (!isRequestInternalError(result.error)) {
-        throw new Error('Invalid error tye')
+        throw new Error('Invalid error type')
       }
 
-      expect(result.error.error.message).toBe('connect ECONNREFUSED 127.0.0.1:80')
+      expect(result.error.error.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
       expect(result.error.requestLabel).toBe('label')
     })
 
@@ -329,7 +329,7 @@ describe('undiciRetry', () => {
       expect.assertions(2)
       try {
         await sendWithRetry(
-          new Client('http://127.0.0.1'),
+          new Client('http://127.0.0.1:999'),
           request,
           {
             maxAttempts: 2,
@@ -347,7 +347,7 @@ describe('undiciRetry', () => {
           throw new Error('wrong error type')
         }
 
-        expect(err.error.message).toBe('connect ECONNREFUSED 127.0.0.1:80')
+        expect(err.error.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
         expect(err.details!.requestLabel).toBe('label')
       }
     })
@@ -486,6 +486,34 @@ describe('undiciRetry', () => {
 
       expect(response.result).toBeDefined()
       expect(response.result?.statusCode).toEqual(200)
+    })
+  })
+
+  describe('Retry-After', () => {
+    it('returns an error response if retry-after is too long', async () => {
+      await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
+        // @ts-ignore
+        'Retry-After': 90,
+      })
+      await mockServer.forGet('/').thenReply(200, 'A mocked response3')
+
+      const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
+
+      expect(response.error).toBeDefined()
+      expect(response.error.statusCode).toBe(429)
+    })
+
+    it('retries if retry-after is short enought', async () => {
+      await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
+        // @ts-ignore
+        'Retry-After': 1,
+      })
+      await mockServer.forGet('/').thenReply(200, 'A mocked response3')
+
+      const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
+
+      expect(response.result).toBeDefined()
+      expect(response.result.statusCode).toBe(200)
     })
   })
 })

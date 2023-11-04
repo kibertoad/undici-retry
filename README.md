@@ -20,7 +20,7 @@ const request: Dispatcher.RequestOptions = {
 const retryConfig: RetryConfig = {
     maxAttempts: 3,
     delayBetweenAttemptsInMsecs: 100,
-    statusCodesToRetry: [500, 502, 503],
+    statusCodesToRetry: [429, 500, 502, 503, 504], // note that if 429 is included, delay will be automatically calculated from 'Retry-After' header if present
 
     // If true, will retry within given limits if request times out
     retryOnTimeout: false,
@@ -70,15 +70,15 @@ const OFFSET = 100
 
 const response = await sendWithRetry(client, request, {
     maxAttempts: 3,
-    statusCodesToRetry: [429, 502, 503],
+    statusCodesToRetry: [502, 503],
     delayBetweenAttemptsInMsecs: 30,
     retryOnTimeout: false,
     delayResolver: (response) => {
-        if (response.statusCode === 429) {
-            return 60000 - (now % 60000) + OFFSET // this will wait until next minute so that request quota is refreshed
+        if (response.statusCode === 502) {
+            return 60000 - (now % 60000) + OFFSET // this will wait until next minute
         }
         
-        if (response.statusCode === 500) {
+        if (response.statusCode === 503) {
             return -1 // Do not retry
         }
         

@@ -1,4 +1,4 @@
-import { resolveDelayTime } from './retryAfterResolver'
+import { resolveDelayTime } from '../lib/retryAfterResolver'
 import { afterEach, vitest } from 'vitest'
 
 const SYSTEM_TIME_CONST = '2023-12-31T18:07:03.432Z'
@@ -15,7 +15,7 @@ describe('retryAfterResolver', () => {
 
   it('Resolves retry time from header in seconds', () => {
     const resolvedRetryDelay = resolveDelayTime({
-      'Retry-After': '30',
+      'retry-after': '30',
     })
 
     expect(resolvedRetryDelay.result).toBe(30000)
@@ -23,7 +23,7 @@ describe('retryAfterResolver', () => {
 
   it('Resolves retry time from header in seconds, capped by maximum', () => {
     const resolvedRetryDelay = resolveDelayTime({
-      'Retry-After': '900',
+      'retry-after': '900',
     })
 
     expect(resolvedRetryDelay.error).toBe('max_delay_exceeded')
@@ -31,7 +31,7 @@ describe('retryAfterResolver', () => {
 
   it('Returns undefined if there is a decimal part', () => {
     const resolvedRetryDelay = resolveDelayTime({
-      'Retry-After': '30.5',
+      'retry-after': '30.5',
     })
 
     expect(resolvedRetryDelay.error).toBe('unknown_format')
@@ -45,7 +45,7 @@ describe('retryAfterResolver', () => {
 
   it('Returns undefined if header is in unknown format', () => {
     const resolvedRetryDelay = resolveDelayTime({
-      'Retry-After': 'dummy',
+      'retry-after': 'dummy',
     })
 
     expect(resolvedRetryDelay.error).toBe('unknown_format')
@@ -54,7 +54,7 @@ describe('retryAfterResolver', () => {
   it('Returns retry time if header is an HTTP date', () => {
     const resolvedRetryDelay = resolveDelayTime(
       {
-        'Retry-After': 'Fri, 31 Dec 2023 23:59:59 GMT',
+        'retry-after': 'Fri, 31 Dec 2023 23:59:59 GMT',
       },
       25000000,
     )
@@ -65,7 +65,7 @@ describe('retryAfterResolver', () => {
   it('Returns retry time if header is a timestamp', () => {
     const resolvedRetryDelay = resolveDelayTime(
       {
-        'Retry-After': '2023-12-31T20:00:00.000Z',
+        'retry-after': '2023-12-31T20:00:00.000Z',
       },
       7000000,
     )
@@ -75,7 +75,7 @@ describe('retryAfterResolver', () => {
 
   it('Returns maximum exceeded error for a timestamp', () => {
     const resolvedRetryDelay = resolveDelayTime({
-      'Retry-After': '2023-12-31T20:00:00.000Z',
+      'retry-after': '2023-12-31T20:00:00.000Z',
     })
 
     expect(resolvedRetryDelay.error).toBe('max_delay_exceeded')
