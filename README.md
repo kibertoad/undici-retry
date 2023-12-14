@@ -20,7 +20,7 @@ const request: Dispatcher.RequestOptions = {
 const retryConfig: RetryConfig = {
     maxAttempts: 3,
     delayBetweenAttemptsInMsecs: 100,
-    statusCodesToRetry: [429, 500, 502, 503, 504], 
+    statusCodesToRetry: [429, 500, 502, 503, 504],
     respectRetryAfter: true, // if 429 is included in "statusCodesToRetry" and this set to true, delay will be automatically calculated from 'Retry-After' header if present. Default is "true"
 
     // If true, will retry within given limits if request times out
@@ -37,8 +37,8 @@ const requestParams: RequestParams = {
     // if true, response body will be returned as Blob
     blobBody: false,
 
-    // if set to false, in case of an internal error (e. g. ECONNREFUSED), error will be returned within an Either and not thrown
-    throwOnInternalError: true,
+    // if set to true, in case of an internal error (e. g. ECONNREFUSED), error will be thrown and not returned within an Either. Default is false. 
+    throwOnInternalError: false,
 }
 
 const result = await sendWithRetry(client, request, retryConfig, requestParams)
@@ -78,11 +78,11 @@ const response = await sendWithRetry(client, request, {
         if (response.statusCode === 502) {
             return 60000 - (now % 60000) + OFFSET // this will wait until next minute
         }
-        
+
         if (response.statusCode === 503) {
             return -1 // Do not retry
         }
-        
+
         return undefined // this will fallback to `delayBetweenAttemptsInMsecs` param
     },
 })
