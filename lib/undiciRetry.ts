@@ -1,11 +1,11 @@
 import type { Dispatcher } from 'undici'
 import type { IncomingHttpHeaders } from 'undici/types/header'
 import type { Either } from './either'
-import { ResponseError } from './ResponseError'
+import { UnprocessableResponseError } from './UnprocessableResponseError'
 import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
 import { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
-import { isResponseError } from './typeGuards'
+import { isUnprocessableResponseError } from './typeGuards'
 import { resolveDelayTime } from './retryAfterResolver'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
@@ -162,7 +162,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         (retryConfig.retryOnTimeout === false && TIMEOUT_ERRORS.indexOf(err.name) !== -1)
       ) {
         if (!requestParams.throwOnInternalError) {
-          if (!isResponseError(err)) {
+          if (!isUnprocessableResponseError(err)) {
             err.requestLabel = requestParams.requestLabel
             err.isInternalRequestError = true
           }
@@ -171,7 +171,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
             error: err,
           }
         } else {
-          if (isResponseError(err)) {
+          if (isUnprocessableResponseError(err)) {
             throw err
           }
 
@@ -206,13 +206,11 @@ async function resolveBody(
     try {
       return JSON.parse(rawBody)
     } catch (err) {
-      throw new ResponseError({
+      throw new UnprocessableResponseError({
         message: 'Error while parsing HTTP JSON response',
         errorCode: 'INVALID_HTTP_RESPONSE_JSON',
         requestLabel,
-        details: {
-          rawBody,
-        },
+        rawBody,
       })
     }
   }
