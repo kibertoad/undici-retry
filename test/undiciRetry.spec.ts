@@ -3,7 +3,7 @@ import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
 import { describe, afterEach, beforeEach, it, expect } from 'vitest'
 import { DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
-import { isInternalRequestError, isRequestInternalError, isRequestResult, isResponseError } from '../lib/typeGuards'
+import { isInternalRequestError, isRequestResult, isResponseError } from '../lib/typeGuards'
 
 const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
@@ -96,6 +96,7 @@ describe('undiciRetry', () => {
           },
           {
             safeParseJson: true,
+            throwOnInternalError: true,
             requestLabel: 'label',
           },
         )
@@ -261,6 +262,9 @@ describe('undiciRetry', () => {
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
+          {
+            throwOnInternalError: true,
+          },
         )
       } catch (err: any) {
         expect(err.message).toBe('Headers Timeout Error')
@@ -275,12 +279,19 @@ describe('undiciRetry', () => {
       expect.assertions(1)
 
       try {
-        await sendWithRetry(client, request, {
-          maxAttempts: 2,
-          delayBetweenAttemptsInMsecs: 10,
-          statusCodesToRetry: [500, 502, 503],
-          retryOnTimeout: false,
-        })
+        await sendWithRetry(
+          client,
+          request,
+          {
+            maxAttempts: 2,
+            delayBetweenAttemptsInMsecs: 10,
+            statusCodesToRetry: [500, 502, 503],
+            retryOnTimeout: false,
+          },
+          {
+            throwOnInternalError: true,
+          },
+        )
       } catch (err: any) {
         expect(err.message).toBe('other side closed')
       }
@@ -317,11 +328,11 @@ describe('undiciRetry', () => {
         },
       )
 
-      if (!isRequestInternalError(result.error)) {
+      if (!isInternalRequestError(result.error)) {
         throw new Error('Invalid error type')
       }
 
-      expect(result.error.error.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
+      expect(result.error.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
       expect(result.error.requestLabel).toBe('label')
     })
 
@@ -347,8 +358,8 @@ describe('undiciRetry', () => {
           throw new Error('wrong error type')
         }
 
-        expect(err.error.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
-        expect(err.details!.requestLabel).toBe('label')
+        expect(err.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
+        expect(err.requestLabel).toBe('label')
       }
     })
 

@@ -4,26 +4,17 @@ import type { Either } from './either'
 import { ResponseError } from './ResponseError'
 import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
-import { InternalRequestError } from './InternalRequestError'
+import { UndiciRetryRequestError } from './UndiciRetryRequestError'
 import { isResponseError } from './typeGuards'
 import { resolveDelayTime } from './retryAfterResolver'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
 export type RequestResult<T> = {
-  error?: never
   body: T
   headers: IncomingHttpHeaders
   statusCode: number
   requestLabel?: string
-}
-
-export type RequestInternalError = {
-  error: Error
-  requestLabel?: string
-  body?: never
-  headers?: never
-  statusCode?: never
 }
 
 export type DelayResolver = (response: Dispatcher.ResponseData) => number | undefined
@@ -74,9 +65,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
   requestParams: ConfigType = DEFAULT_REQUEST_PARAMS as ConfigType,
 ): Promise<
   Either<
-    ConfigType['throwOnInternalError'] extends false
-      ? RequestResult<unknown> | RequestInternalError
-      : RequestResult<unknown>,
+    ConfigType['throwOnInternalError'] extends false ? RequestResult<unknown> | RequestError : RequestResult<unknown>,
     RequestResult<ConfigType['blobBody'] extends true ? Blob : T>
   >
 > {
@@ -170,20 +159,21 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         attemptsSoFar >= retryConfig.maxAttempts ||
         (retryConfig.retryOnTimeout === false && TIMEOUT_ERRORS.indexOf(err.name) !== -1)
       ) {
-        if (requestParams.throwOnInternalError === false) {
+        if (!requestParams.throwOnInternalError) {
+          if (!isResponseError(err)) {
+            err.requestLabel = requestParams.requestLabel
+            err.isInternalRequestError = true
+          }
+
           return {
-            // @ts-ignore
-            error: {
-              error: err,
-              requestLabel: requestParams.requestLabel,
-            } satisfies RequestInternalError,
+            error: err,
           }
         } else {
           if (isResponseError(err)) {
             throw err
           }
 
-          throw new InternalRequestError({
+          throw new UndiciRetryRequestError({
             error: err,
             message: err.message,
             requestLabel: requestParams.requestLabel,

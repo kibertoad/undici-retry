@@ -1,5 +1,5 @@
 export { ResponseError } from './lib/ResponseError'
-export { InternalRequestError } from './lib/InternalRequestError'
+export { UndiciRetryRequestError } from './lib/UndiciRetryRequestError'
 export { sendWithRetry, DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG } from './lib/undiciRetry'
 export { createDelayToNextMinuteResolver } from './lib/delayResolvers'
 export { isInternalRequestError, isRequestResult, isResponseError, isRequestInternalError } from './lib/typeGuards'

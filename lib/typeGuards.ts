@@ -1,13 +1,9 @@
-import { RequestInternalError, RequestResult } from './undiciRetry'
+import { RequestResult } from './undiciRetry'
 import { ResponseError } from './ResponseError'
-import { InternalRequestError } from './InternalRequestError'
-
-export function isRequestInternalError(entity: unknown): entity is RequestInternalError {
-  return 'error' in (entity as RequestInternalError) && 'requestLabel' in (entity as RequestInternalError)
-}
+import { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
 
 export function isInternalRequestError(entity: unknown): entity is InternalRequestError {
-  return 'isInternalRequestError' in (entity as InternalRequestError)
+  return 'isInternalRequestError' in (entity as UndiciRetryRequestError)
 }
 
 export function isRequestResult(entity: unknown): entity is RequestResult<unknown> {
