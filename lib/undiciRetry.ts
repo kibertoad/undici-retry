@@ -4,7 +4,7 @@ import type { Either } from './either'
 import { ResponseError } from './ResponseError'
 import { setTimeout } from 'node:timers/promises'
 import { errors } from 'undici'
-import { UndiciRetryRequestError } from './UndiciRetryRequestError'
+import { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
 import { isResponseError } from './typeGuards'
 import { resolveDelayTime } from './retryAfterResolver'
 
@@ -65,7 +65,9 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
   requestParams: ConfigType = DEFAULT_REQUEST_PARAMS as ConfigType,
 ): Promise<
   Either<
-    ConfigType['throwOnInternalError'] extends false ? RequestResult<unknown> | RequestError : RequestResult<unknown>,
+    ConfigType['throwOnInternalError'] extends true
+      ? RequestResult<unknown>
+      : RequestResult<unknown> | InternalRequestError,
     RequestResult<ConfigType['blobBody'] extends true ? Blob : T>
   >
 > {

@@ -510,7 +510,9 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
 
-      expect(response.error).toBeDefined()
+      if (!response.error) {
+        throw new Error('Expected to receive an error')
+      }
       expect(response.error.statusCode).toBe(429)
     })
 
@@ -526,7 +528,9 @@ describe('undiciRetry', () => {
         respectRetryAfter: false,
       })
 
-      expect(response.result).toBeDefined()
+      if (!response.result) {
+        throw new Error('Expected to receive result')
+      }
       expect(response.result.statusCode).toBe(200)
     })
 
@@ -539,7 +543,9 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
 
-      expect(response.result).toBeDefined()
+      if (!response.result) {
+        throw new Error('Expected to receive result')
+      }
       expect(response.result.statusCode).toBe(200)
     })
   })

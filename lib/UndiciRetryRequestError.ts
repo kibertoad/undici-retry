@@ -5,6 +5,8 @@ export type RequestErrorParams = {
 }
 
 export type InternalRequestError = Error & {
+  statusCode?: never
+  body?: never
   requestLabel?: string
   isInternalRequestError?: boolean
 }
