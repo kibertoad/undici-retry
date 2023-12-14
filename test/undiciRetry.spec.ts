@@ -3,7 +3,7 @@ import type { Dispatcher } from 'undici'
 import { getLocal } from 'mockttp'
 import { describe, afterEach, beforeEach, it, expect } from 'vitest'
 import { DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
-import { isInternalRequestError, isRequestResult, isResponseError } from '../lib/typeGuards'
+import { isInternalRequestError, isRequestResult, isUnprocessableResponseError } from '../lib/typeGuards'
 
 const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
@@ -101,7 +101,7 @@ describe('undiciRetry', () => {
           },
         )
       } catch (err: any) {
-        if (!isResponseError(err)) {
+        if (!isUnprocessableResponseError(err)) {
           throw new Error('invalid response type')
         }
 
@@ -268,6 +268,33 @@ describe('undiciRetry', () => {
         )
       } catch (err: any) {
         expect(err.message).toBe('Headers Timeout Error')
+      }
+    })
+
+    it('throw internal error if cannot connect', async () => {
+      expect.assertions(2)
+
+      try {
+        await sendWithRetry(
+          new Client('http://127.0.0.1:999'),
+          request,
+          {
+            maxAttempts: 2,
+            delayBetweenAttemptsInMsecs: 10,
+            statusCodesToRetry: [500, 502, 503],
+            retryOnTimeout: false,
+          },
+          {
+            throwOnInternalError: true,
+            requestLabel: 'label',
+          },
+        )
+      } catch (err) {
+        if (!isInternalRequestError(err)) {
+          throw new Error('Invalid error type')
+        }
+        expect(err.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
+        expect(err.requestLabel).toBe('label')
       }
     })
 

@@ -5,18 +5,19 @@ export type RequestErrorParams = {
   errorCode: string
   details?: ErrorDetails
   requestLabel?: string
+  rawBody: string
 }
 
-export class ResponseError extends Error {
+export class UnprocessableResponseError extends Error {
   public readonly details?: ErrorDetails
   public readonly errorCode: string
-  public readonly isResponseError = true
+  public readonly isUnprocessableResponseError = true
 
   constructor(params: RequestErrorParams) {
     super(params.message)
-    this.name = 'ResponseError'
+    this.name = 'UnprocessableResponseError'
     this.details = {
-      ...params.details,
+      rawBody: params.rawBody,
       requestLabel: params.requestLabel,
     }
     this.errorCode = params.errorCode
