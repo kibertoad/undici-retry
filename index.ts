@@ -6,3 +6,4 @@ export { isInternalRequestError, isRequestResult, isUnprocessableResponseError }
 export type { CreateDelayToNextMinuteResolverConfig } from './lib/delayResolvers'
 export type { RetryConfig, RequestResult, DelayResolver, RequestParams } from './lib/undiciRetry'
 export type { Either } from './lib/either'
+export type { InternalRequestError } from './lib/UndiciRetryRequestError'
