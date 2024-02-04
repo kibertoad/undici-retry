@@ -9,6 +9,7 @@
     "declarationMap": false,
     "types": ["node", "vitest/globals"],
     "strict": true,
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -23,5 +24,7 @@
     "esModuleInterop": false,
     "forceConsistentCasingInFileNames": true
   },
-  "exclude": ["node_modules", "dist", "test", "vitest.config.ts"]
+  "exclude": ["node_modules", "dist", "test",
+    "vitest.config.mts"
+  ]
 }

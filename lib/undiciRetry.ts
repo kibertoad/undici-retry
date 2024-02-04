@@ -1,12 +1,12 @@
-import type { Dispatcher } from 'undici'
-import type { IncomingHttpHeaders } from 'undici/types/header'
-import type { Either } from './either'
-import { UnprocessableResponseError } from './UnprocessableResponseError'
 import { setTimeout } from 'node:timers/promises'
+import type { Dispatcher } from 'undici'
 import { errors } from 'undici'
+import type { IncomingHttpHeaders } from 'undici/types/header'
 import { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
-import { isUnprocessableResponseError } from './typeGuards'
+import { UnprocessableResponseError } from './UnprocessableResponseError'
+import type { Either } from './either'
 import { resolveDelayTime } from './retryAfterResolver'
+import { isUnprocessableResponseError } from './typeGuards'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
@@ -110,7 +110,11 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
         }
       }
 
-      if (retryConfig.delayBetweenAttemptsInMsecs || retryConfig.delayResolver || response.statusCode === 429) {
+      if (
+        retryConfig.delayBetweenAttemptsInMsecs ||
+        retryConfig.delayResolver ||
+        response.statusCode === 429
+      ) {
         let delay: number | undefined
 
         // TOO_MANY_REQUESTS
@@ -119,7 +123,10 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
           response.statusCode === 429 &&
           'retry-after' in response.headers
         ) {
-          const delayResolutionResult = resolveDelayTime(response.headers, retryConfig.maxRetryAfterInMsecs)
+          const delayResolutionResult = resolveDelayTime(
+            response.headers,
+            retryConfig.maxRetryAfterInMsecs,
+          )
           if (delayResolutionResult.result) {
             delay = delayResolutionResult.result
           }
@@ -145,11 +152,11 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
               requestLabel: requestParams.requestLabel,
             },
           }
-        } else {
-          // retry
-          // undici response body always has to be processed or discarded
-          await response.body.dump()
         }
+
+        // retry
+        // undici response body always has to be processed or discarded
+        await response.body.dump()
 
         await setTimeout(delay)
       } else {
@@ -170,17 +177,16 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
           return {
             error: err,
           }
-        } else {
-          if (isUnprocessableResponseError(err)) {
-            throw err
-          }
-
-          throw new UndiciRetryRequestError({
-            error: err,
-            message: err.message,
-            requestLabel: requestParams.requestLabel,
-          })
         }
+        if (isUnprocessableResponseError(err)) {
+          throw err
+        }
+
+        throw new UndiciRetryRequestError({
+          error: err,
+          message: err.message,
+          requestLabel: requestParams.requestLabel,
+        })
       }
     }
   }
@@ -188,7 +194,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
 
 async function resolveBody(
   response: Dispatcher.ResponseData,
-  requestLabel: string = 'N/A',
+  requestLabel = 'N/A',
   blobBody = false,
   safeParseJson = false,
 ) {
