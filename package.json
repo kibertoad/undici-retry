@@ -15,7 +15,7 @@
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "biomd lint index.ts lib test biome.json",
+    "lint": "biome lint index.ts lib test biome.json",
     "lint:fix": "biome check --apply index.ts lib test biome.json",
     "prepublishOnly": "npm run build"
   },
