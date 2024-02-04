@@ -1,6 +1,6 @@
+import type { Dispatcher } from 'undici'
 import { afterEach, describe, vitest } from 'vitest'
 import { createDelayToNextMinuteResolver } from '../lib/delayResolvers'
-import type { Dispatcher } from 'undici'
 
 const SYSTEM_TIME_CONST = '2023-10-04T18:07:03.432Z'
 

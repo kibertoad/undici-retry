@@ -1,9 +1,13 @@
+import { getLocal } from 'mockttp'
 import { Client, Pool } from 'undici'
 import type { Dispatcher } from 'undici'
-import { getLocal } from 'mockttp'
-import { describe, afterEach, beforeEach, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import {
+  isInternalRequestError,
+  isRequestResult,
+  isUnprocessableResponseError,
+} from '../lib/typeGuards'
 import { DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
-import { isInternalRequestError, isRequestResult, isUnprocessableResponseError } from '../lib/typeGuards'
 
 const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
