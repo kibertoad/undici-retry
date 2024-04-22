@@ -61,7 +61,7 @@ describe('undiciRetry', () => {
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
 
       const response = await sendWithRetry(client, request, NO_RETRY_CONFIG, {
-        requestLabel: 'red label'
+        requestLabel: 'red label',
       })
 
       expect(response.error).toBeDefined()
@@ -543,7 +543,7 @@ describe('undiciRetry', () => {
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
 
       const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG, {
-        requestLabel: 'black label'
+        requestLabel: 'black label',
       })
 
       if (!response.error) {

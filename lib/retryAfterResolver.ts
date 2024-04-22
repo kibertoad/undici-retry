@@ -1,4 +1,4 @@
-import { Either } from './either'
+import type { Either } from './either'
 
 const DIGITS_ONLY_REGEX = /^\d+$/
 
@@ -18,7 +18,7 @@ export function resolveDelayTime(
 
   // parse as number
   if (retryAfter.match(DIGITS_ONLY_REGEX)) {
-    resolvedDelay = parseInt(retryAfter) * 1000
+    resolvedDelay = Number.parseInt(retryAfter) * 1000
   }
   // parse as date
   else {

@@ -1,6 +1,6 @@
-import { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
-import { UnprocessableResponseError } from './UnprocessableResponseError'
-import { RequestResult } from './undiciRetry'
+import type { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
+import type { UnprocessableResponseError } from './UnprocessableResponseError'
+import type { RequestResult } from './undiciRetry'
 
 export function isInternalRequestError(entity: unknown): entity is InternalRequestError {
   return 'isInternalRequestError' in (entity as UndiciRetryRequestError)

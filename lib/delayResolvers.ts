@@ -1,4 +1,4 @@
-import { DelayResolver } from './undiciRetry'
+import type { DelayResolver } from './undiciRetry'
 
 export type CreateDelayToNextMinuteResolverConfig = {
   offsetInMsecs: number
