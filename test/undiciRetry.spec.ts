@@ -60,11 +60,14 @@ describe('undiciRetry', () => {
       await mockServer.forGet('/').thenReply(500, 'A mocked response1')
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
 
-      const response = await sendWithRetry(client, request, NO_RETRY_CONFIG)
+      const response = await sendWithRetry(client, request, NO_RETRY_CONFIG, {
+        requestLabel: 'red label',
+      })
 
       expect(response.error).toBeDefined()
-      expect(response.error?.statusCode).toEqual(500)
-      expect(response.error?.body).toEqual('A mocked response1')
+      expect(response.error!.statusCode).toEqual(500)
+      expect(response.error!.body).toEqual('A mocked response1')
+      expect(response.error!.requestLabel).toEqual('red label')
     })
 
     it('do not retry on success', async () => {
@@ -464,8 +467,8 @@ describe('undiciRetry', () => {
       }
 
       expect(response.error).toBeDefined()
-      expect(response.error?.statusCode).toEqual(502)
-      expect(response.error?.body).toEqual('A mocked response2')
+      expect(response.error!.statusCode).toEqual(502)
+      expect(response.error!.body).toEqual('A mocked response2')
     })
 
     it('does not invoke delay resolved on unspecified codes', async () => {
@@ -487,8 +490,8 @@ describe('undiciRetry', () => {
       })
 
       expect(response.error).toBeDefined()
-      expect(response.error?.statusCode).toEqual(500)
-      expect(response.error?.body).toEqual('A mocked response1')
+      expect(response.error!.statusCode).toEqual(500)
+      expect(response.error!.body).toEqual('A mocked response1')
     })
 
     it('fallbacks to set retry time if resolver returns undefined', async () => {
@@ -539,12 +542,15 @@ describe('undiciRetry', () => {
       })
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
 
-      const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG)
+      const response = await sendWithRetry(client, request, DEFAULT_RETRY_CONFIG, {
+        requestLabel: 'black label',
+      })
 
       if (!response.error) {
         throw new Error('Expected to receive an error')
       }
       expect(response.error.statusCode).toBe(429)
+      expect(response.error.requestLabel).toBe('black label')
     })
 
     it('ignores RetryAfter if flag is sent to false', async () => {

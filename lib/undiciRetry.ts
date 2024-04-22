@@ -2,7 +2,7 @@ import { setTimeout } from 'node:timers/promises'
 import type { Dispatcher } from 'undici'
 import { errors } from 'undici'
 import type { IncomingHttpHeaders } from 'undici/types/header'
-import { InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
+import { type InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
 import { UnprocessableResponseError } from './UnprocessableResponseError'
 import type { Either } from './either'
 import { resolveDelayTime } from './retryAfterResolver'
@@ -106,6 +106,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
             body: resolvedBody,
             headers: response.headers,
             statusCode: response.statusCode,
+            requestLabel: requestParams.requestLabel,
           },
         }
       }

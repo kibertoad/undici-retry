@@ -1,4 +1,4 @@
-import { ErrorDetails } from './commonTypes'
+import type { ErrorDetails } from './commonTypes'
 
 export type RequestErrorParams = {
   message: string
