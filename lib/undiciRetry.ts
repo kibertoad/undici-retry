@@ -106,6 +106,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
             body: resolvedBody,
             headers: response.headers,
             statusCode: response.statusCode,
+            requestLabel: requestParams.requestLabel,
           },
         }
       }
