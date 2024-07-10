@@ -1,26 +1,11 @@
 {
-	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-	"javascript": {
-		"formatter": {
-			"arrowParentheses": "always",
-			"indentStyle": "space",
-			"semicolons": "asNeeded",
-			"trailingComma": "all",
-			"lineWidth": 100,
-			"quoteStyle": "single"
-		}
-	},
-	"linter": {
-		"rules": {
-			"style": {
-				"noNonNullAssertion": "off"
-			},
-			"correctness": {},
-			"suspicious": {
-				"noGlobalIsNan": "off",
-				"noExplicitAny": "off"
-			},
-			"complexity": {}
-		}
-	}
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["./node_modules/@kibertoad/biome-config/configs/biome-package.json"],
+  "linter": {
+    "rules": {
+      "performance": {
+        "noBarrelFile": "off"
+      }
+    }
+  }
 }

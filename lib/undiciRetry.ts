@@ -58,6 +58,7 @@ export const DEFAULT_REQUEST_PARAMS: RequestParams = {
   safeParseJson: false,
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation>
 export async function sendWithRetry<T, const ConfigType extends RequestParams = RequestParams>(
   client: Dispatcher,
   request: Dispatcher.RequestOptions,
@@ -163,6 +164,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
       } else {
         await response.body.dump()
       }
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     } catch (err: any) {
       // on internal client error we can't do much; if there are still retries left, we retry, if not, we rethrow an error
       if (
@@ -212,7 +214,7 @@ async function resolveBody(
     const rawBody = await response.body.text()
     try {
       return JSON.parse(rawBody)
-    } catch (err) {
+    } catch (_err) {
       throw new UnprocessableResponseError({
         message: 'Error while parsing HTTP JSON response',
         errorCode: 'INVALID_HTTP_RESPONSE_JSON',
