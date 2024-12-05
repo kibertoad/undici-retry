@@ -1,6 +1,6 @@
 {
   "name": "undici-retry",
-  "version": "5.0.3",
+  "version": "6.0.0",
   "license": "MIT",
   "description": "Library for handling retry logic with undici HTTP client",
   "maintainers": [
