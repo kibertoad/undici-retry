@@ -139,7 +139,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
 
         if (delay === undefined) {
           delay = retryConfig.delayResolver
-            ? retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0
+            ? (retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0)
             : retryConfig.delayBetweenAttemptsInMsecs
         }
 
