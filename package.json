@@ -22,17 +22,17 @@
   "dependencies": {
   },
   "peerDependencies": {
-    "undici": "^6.0.0"
+    "undici": ">=7.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.8.3",
-    "@kibertoad/biome-config": "^1.2.0",
-    "@types/node": "^20.14.10",
-    "@vitest/coverage-v8": "^2.0.2",
-    "mockttp": "^3.14.0",
-    "typescript": "^5.5.3",
-    "undici": "^7.0.0",
-    "vitest": "^2.0.2"
+    "@biomejs/biome": "^1.9.4",
+    "@kibertoad/biome-config": "^1.2.1",
+    "@types/node": "^20.17.9",
+    "@vitest/coverage-v8": "^2.1.8",
+    "mockttp": "^3.15.5",
+    "typescript": "^5.7.2",
+    "undici": "^7.1.0",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=18"
