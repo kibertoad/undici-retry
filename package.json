@@ -15,12 +15,11 @@
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "biome check index.ts lib test biome.json",
-    "lint:fix": "biome check --write index.ts lib test biome.json",
+    "lint": "biome check && tsc --noEmit",
+    "lint:fix": "biome check --write",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "peerDependencies": {
     "undici": ">=7.0.0"
   },
@@ -41,18 +40,7 @@
     "type": "git",
     "url": "git://github.com/kibertoad/undici-retry.git"
   },
-  "keywords": [
-    "undici",
-    "retry",
-    "error",
-    "http",
-    "client",
-    "https"
-  ],
+  "keywords": ["undici", "retry", "error", "http", "client", "https"],
   "homepage": "https://github.com/kibertoad/undici-retry",
-  "files": [
-    "README.md",
-    "LICENSE",
-    "dist/*"
-  ]
+  "files": ["README.md", "LICENSE", "dist/*"]
 }
