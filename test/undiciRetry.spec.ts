@@ -1,6 +1,6 @@
 import { getLocal } from 'mockttp'
-import { Client, Pool } from 'undici'
 import type { Dispatcher } from 'undici'
+import { Client, Pool } from 'undici'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   isInternalRequestError,
@@ -537,7 +537,7 @@ describe('undiciRetry', () => {
   describe('Retry-After', () => {
     it('returns an error response if retry-after is too long', async () => {
       await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
-        // @ts-ignore
+        // @ts-expect-error
         'Retry-After': 90,
       })
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
@@ -555,7 +555,7 @@ describe('undiciRetry', () => {
 
     it('ignores RetryAfter if flag is sent to false', async () => {
       await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
-        // @ts-ignore
+        // @ts-expect-error
         'Retry-After': 90,
       })
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')
@@ -573,7 +573,7 @@ describe('undiciRetry', () => {
 
     it('retries if retry-after is short enought', async () => {
       await mockServer.forGet('/').thenReply(429, 'A mocked response2', {
-        // @ts-ignore
+        // @ts-expect-error
         'Retry-After': 1,
       })
       await mockServer.forGet('/').thenReply(200, 'A mocked response3')

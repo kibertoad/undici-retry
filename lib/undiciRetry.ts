@@ -2,11 +2,11 @@ import { setTimeout } from 'node:timers/promises'
 import type { Dispatcher } from 'undici'
 import { errors } from 'undici'
 import type { IncomingHttpHeaders } from 'undici/types/header'
-import { type InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
-import { UnprocessableResponseError } from './UnprocessableResponseError'
 import type { Either } from './either'
 import { resolveDelayTime } from './retryAfterResolver'
 import { isUnprocessableResponseError } from './typeGuards'
+import { type InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
+import { UnprocessableResponseError } from './UnprocessableResponseError'
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
@@ -58,7 +58,7 @@ export const DEFAULT_REQUEST_PARAMS: RequestParams = {
   safeParseJson: false,
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation>
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this is expected
 export async function sendWithRetry<T, const ConfigType extends RequestParams = RequestParams>(
   client: Dispatcher,
   request: Dispatcher.RequestOptions,
@@ -164,7 +164,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
       } else {
         await response.body.dump()
       }
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: this is expected
     } catch (err: any) {
       // on internal client error we can't do much; if there are still retries left, we retry, if not, we rethrow an error
       if (
