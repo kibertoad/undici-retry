@@ -39,7 +39,7 @@ export type RequestParams = {
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 3,
   delayBetweenAttemptsInMsecs: 100,
-  statusCodesToRetry: [429, 500, 502, 503, 504],
+  statusCodesToRetry: [425, 429, 500, 502, 503, 504],
   retryOnTimeout: false,
   respectRetryAfter: true,
   maxRetryAfterInMsecs: 60000,
