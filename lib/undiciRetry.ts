@@ -36,6 +36,8 @@ export type RequestParams = {
   throwOnInternalError?: boolean
 }
 
+export type StreamRequestParams = Omit<RequestParams, 'blobBody' | 'safeParseJson'>
+
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 3,
   delayBetweenAttemptsInMsecs: 100,
@@ -59,17 +61,18 @@ export const DEFAULT_REQUEST_PARAMS: RequestParams = {
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this is expected
-export async function sendWithRetry<T, const ConfigType extends RequestParams = RequestParams>(
+async function sendWithRetryInternal<TBody, const ConfigType extends RequestParams = RequestParams>(
   client: Dispatcher,
   request: Dispatcher.RequestOptions,
-  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG,
-  requestParams: ConfigType = DEFAULT_REQUEST_PARAMS as ConfigType,
+  retryConfig: RetryConfig,
+  requestParams: ConfigType,
+  handleSuccessBody: (response: Dispatcher.ResponseData) => Promise<TBody> | TBody,
 ): Promise<
   Either<
     ConfigType['throwOnInternalError'] extends true
       ? RequestResult<unknown>
       : RequestResult<unknown> | InternalRequestError,
-    RequestResult<ConfigType['blobBody'] extends true ? Blob : T>
+    RequestResult<TBody>
   >
 > {
   let attemptsSoFar = 0
@@ -81,12 +84,7 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
 
       // success
       if (response.statusCode < 400) {
-        const resolvedBody = await resolveBody(
-          response,
-          requestParams.requestLabel,
-          requestParams.blobBody,
-          requestParams.safeParseJson,
-        )
+        const resolvedBody = await handleSuccessBody(response)
         return {
           result: {
             body: resolvedBody,
@@ -193,6 +191,53 @@ export async function sendWithRetry<T, const ConfigType extends RequestParams = 
       }
     }
   }
+}
+
+export function sendWithRetry<T, const ConfigType extends RequestParams = RequestParams>(
+  client: Dispatcher,
+  request: Dispatcher.RequestOptions,
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG,
+  requestParams: ConfigType = DEFAULT_REQUEST_PARAMS as ConfigType,
+): Promise<
+  Either<
+    ConfigType['throwOnInternalError'] extends true
+      ? RequestResult<unknown>
+      : RequestResult<unknown> | InternalRequestError,
+    RequestResult<ConfigType['blobBody'] extends true ? Blob : T>
+  >
+> {
+  return sendWithRetryInternal(client, request, retryConfig, requestParams, (response) =>
+    resolveBody(
+      response,
+      requestParams.requestLabel,
+      requestParams.blobBody,
+      requestParams.safeParseJson,
+    ),
+  )
+}
+
+export function sendWithRetryReturnStream<
+  const ConfigType extends StreamRequestParams = StreamRequestParams,
+>(
+  client: Dispatcher,
+  request: Dispatcher.RequestOptions,
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG,
+  requestParams: ConfigType = {} as ConfigType,
+): Promise<
+  Either<
+    ConfigType['throwOnInternalError'] extends true
+      ? RequestResult<unknown>
+      : RequestResult<unknown> | InternalRequestError,
+    RequestResult<Dispatcher.ResponseData['body']>
+  >
+> {
+  return sendWithRetryInternal(
+    client,
+    request,
+    retryConfig,
+    requestParams,
+    (response) => response.body,
+  )
 }
 
 async function resolveBody(

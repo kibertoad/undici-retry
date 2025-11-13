@@ -9,5 +9,16 @@ export {
 export type { InternalRequestError } from './lib/UndiciRetryRequestError'
 export { UndiciRetryRequestError } from './lib/UndiciRetryRequestError'
 export { UnprocessableResponseError } from './lib/UnprocessableResponseError'
-export type { DelayResolver, RequestParams, RequestResult, RetryConfig } from './lib/undiciRetry'
-export { DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG, sendWithRetry } from './lib/undiciRetry'
+export type {
+  DelayResolver,
+  RequestParams,
+  RequestResult,
+  RetryConfig,
+  StreamRequestParams,
+} from './lib/undiciRetry'
+export {
+  DEFAULT_RETRY_CONFIG,
+  NO_RETRY_CONFIG,
+  sendWithRetry,
+  sendWithRetryReturnStream,
+} from './lib/undiciRetry'

@@ -62,6 +62,42 @@ if (result.result) {
 }
 ```
 
+## Streaming response body
+
+If you need to work with the response body as a stream (without consuming it immediately), use `sendWithRetryReturnStream`:
+
+```ts
+import { sendWithRetryReturnStream } from 'undici-retry';
+import type { StreamRequestParams } from 'undici-retry';
+
+// Note: StreamRequestParams only includes requestLabel and throwOnInternalError
+// It does NOT include blobBody and safeParseJson since the body is returned as a stream
+const streamParams: StreamRequestParams = {
+    requestLabel: 'download-file',
+    throwOnInternalError: false,
+}
+
+const result = await sendWithRetryReturnStream(client, request, retryConfig, streamParams)
+
+if (result.result) {
+    // Body is returned as a Readable stream
+    const stream = result.result.body
+
+    // You can pipe it, read chunks, or consume it as needed
+    const text = await stream.text()
+    // or: const json = await stream.json()
+    // or: const blob = await stream.blob()
+    // or: pipe it to a file, etc.
+}
+```
+
+**Key differences from `sendWithRetry`:**
+- On successful responses (status < 400), returns the body as a `Readable` stream without consuming it
+- The stream can be processed however you need (piped to a file, parsed manually, etc.)
+- Uses `StreamRequestParams` instead of `RequestParams` - only accepts `requestLabel` and `throwOnInternalError`
+- The `blobBody` and `safeParseJson` parameters are not available (TypeScript will prevent you from passing them)
+- Error responses still consume the body and return it as text or JSON (since the body must be dumped for retries)
+
 ## Delay resolvers
 
 You can write custom logic for resolving the retry delay based on response received. E. g.:

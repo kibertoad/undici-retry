@@ -1,0 +1,359 @@
+{
+  "metadata": {
+    "title": "Large Test Dataset",
+    "description": "This file is used to test multi-chunk stream processing in undici-retry",
+    "version": "1.0.0",
+    "generatedAt": "2025-01-13T00:00:00Z"
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice.johnson@example.com",
+      "address": {
+        "street": "123 Main Street",
+        "city": "Springfield",
+        "state": "IL",
+        "zipCode": "62701",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0101", "+1-555-0102"],
+      "preferences": {
+        "theme": "dark",
+        "notifications": true,
+        "language": "en-US"
+      },
+      "bio": "Software engineer with 10 years of experience in building scalable web applications. Passionate about open source and contributing to the developer community. Loves hiking and photography in spare time."
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "email": "bob.smith@example.com",
+      "address": {
+        "street": "456 Oak Avenue",
+        "city": "Portland",
+        "state": "OR",
+        "zipCode": "97201",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0201", "+1-555-0202"],
+      "preferences": {
+        "theme": "light",
+        "notifications": false,
+        "language": "en-US"
+      },
+      "bio": "Product manager specializing in SaaS products. Background in design thinking and user research. Enjoys cooking and trying new recipes from around the world."
+    },
+    {
+      "id": 3,
+      "name": "Carol White",
+      "email": "carol.white@example.com",
+      "address": {
+        "street": "789 Pine Road",
+        "city": "Austin",
+        "state": "TX",
+        "zipCode": "78701",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0301", "+1-555-0302"],
+      "preferences": {
+        "theme": "dark",
+        "notifications": true,
+        "language": "en-US"
+      },
+      "bio": "Data scientist working on machine learning models for predictive analytics. PhD in Computer Science. Passionate about making AI more accessible and ethical."
+    },
+    {
+      "id": 4,
+      "name": "David Brown",
+      "email": "david.brown@example.com",
+      "address": {
+        "street": "321 Elm Street",
+        "city": "Seattle",
+        "state": "WA",
+        "zipCode": "98101",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0401", "+1-555-0402"],
+      "preferences": {
+        "theme": "light",
+        "notifications": true,
+        "language": "en-US"
+      },
+      "bio": "DevOps engineer focused on cloud infrastructure and automation. Certified in AWS and Kubernetes. Loves mountain biking and participating in hackathons."
+    },
+    {
+      "id": 5,
+      "name": "Emma Davis",
+      "email": "emma.davis@example.com",
+      "address": {
+        "street": "654 Maple Drive",
+        "city": "Boston",
+        "state": "MA",
+        "zipCode": "02101",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0501", "+1-555-0502"],
+      "preferences": {
+        "theme": "dark",
+        "notifications": false,
+        "language": "en-US"
+      },
+      "bio": "UX designer with a passion for creating intuitive and beautiful user interfaces. Believes in user-centered design and accessibility. Enjoys painting and visiting art galleries."
+    },
+    {
+      "id": 6,
+      "name": "Frank Miller",
+      "email": "frank.miller@example.com",
+      "address": {
+        "street": "987 Cedar Lane",
+        "city": "Denver",
+        "state": "CO",
+        "zipCode": "80201",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0601", "+1-555-0602"],
+      "preferences": {
+        "theme": "light",
+        "notifications": true,
+        "language": "en-US"
+      },
+      "bio": "Security engineer specializing in application security and penetration testing. Holds OSCP and CISSP certifications. Enjoys chess and strategy games."
+    },
+    {
+      "id": 7,
+      "name": "Grace Lee",
+      "email": "grace.lee@example.com",
+      "address": {
+        "street": "147 Birch Court",
+        "city": "San Francisco",
+        "state": "CA",
+        "zipCode": "94101",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0701", "+1-555-0702"],
+      "preferences": {
+        "theme": "dark",
+        "notifications": true,
+        "language": "en-US"
+      },
+      "bio": "Full-stack developer with expertise in React and Node.js. Contributes to several open-source projects. Passionate about mentoring junior developers and speaking at conferences."
+    },
+    {
+      "id": 8,
+      "name": "Henry Wilson",
+      "email": "henry.wilson@example.com",
+      "address": {
+        "street": "258 Spruce Avenue",
+        "city": "Chicago",
+        "state": "IL",
+        "zipCode": "60601",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0801", "+1-555-0802"],
+      "preferences": {
+        "theme": "light",
+        "notifications": false,
+        "language": "en-US"
+      },
+      "bio": "Database administrator with deep knowledge of PostgreSQL and MongoDB. Specializes in query optimization and data modeling. Enjoys reading sci-fi novels and playing guitar."
+    },
+    {
+      "id": 9,
+      "name": "Ivy Martinez",
+      "email": "ivy.martinez@example.com",
+      "address": {
+        "street": "369 Willow Street",
+        "city": "Miami",
+        "state": "FL",
+        "zipCode": "33101",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-0901", "+1-555-0902"],
+      "preferences": {
+        "theme": "dark",
+        "notifications": true,
+        "language": "es-US"
+      },
+      "bio": "Mobile app developer focusing on iOS and Android platforms. Experience with Swift, Kotlin, and React Native. Passionate about creating accessible apps for everyone."
+    },
+    {
+      "id": 10,
+      "name": "Jack Anderson",
+      "email": "jack.anderson@example.com",
+      "address": {
+        "street": "741 Poplar Road",
+        "city": "Phoenix",
+        "state": "AZ",
+        "zipCode": "85001",
+        "country": "USA"
+      },
+      "phoneNumbers": ["+1-555-1001", "+1-555-1002"],
+      "preferences": {
+        "theme": "light",
+        "notifications": true,
+        "language": "en-US"
+      },
+      "bio": "Solutions architect helping companies migrate to cloud-native architectures. Expert in microservices and serverless computing. Loves traveling and exploring new cultures."
+    }
+  ],
+  "products": [
+    {
+      "id": 101,
+      "name": "Laptop Pro 15",
+      "category": "Electronics",
+      "price": 1299.99,
+      "inStock": true,
+      "specifications": {
+        "processor": "Intel Core i7-11th Gen",
+        "ram": "16GB DDR4",
+        "storage": "512GB SSD",
+        "display": "15.6 inch Full HD",
+        "graphics": "Integrated Intel Iris Xe"
+      },
+      "reviews": [
+        {
+          "userId": 1,
+          "rating": 5,
+          "comment": "Excellent laptop for software development. Fast and reliable."
+        },
+        {
+          "userId": 4,
+          "rating": 4,
+          "comment": "Great performance, battery life could be better."
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "name": "Wireless Mouse",
+      "category": "Accessories",
+      "price": 29.99,
+      "inStock": true,
+      "specifications": {
+        "connectivity": "Bluetooth 5.0",
+        "batteryLife": "6 months",
+        "dpi": "1600",
+        "buttons": 5
+      },
+      "reviews": [
+        {
+          "userId": 2,
+          "rating": 5,
+          "comment": "Very comfortable and responsive. Perfect for everyday use."
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Mechanical Keyboard",
+      "category": "Accessories",
+      "price": 89.99,
+      "inStock": true,
+      "specifications": {
+        "switchType": "Cherry MX Blue",
+        "backlight": "RGB",
+        "connectivity": "USB-C",
+        "layout": "Full-size"
+      },
+      "reviews": [
+        {
+          "userId": 7,
+          "rating": 5,
+          "comment": "Best keyboard I've ever used. The typing experience is amazing."
+        },
+        {
+          "userId": 8,
+          "rating": 4,
+          "comment": "Great build quality but a bit loud for office use."
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "name": "4K Monitor 27 inch",
+      "category": "Electronics",
+      "price": 449.99,
+      "inStock": false,
+      "specifications": {
+        "resolution": "3840x2160",
+        "refreshRate": "60Hz",
+        "panelType": "IPS",
+        "ports": ["HDMI 2.0", "DisplayPort 1.4", "USB-C"]
+      },
+      "reviews": [
+        {
+          "userId": 3,
+          "rating": 5,
+          "comment": "Crystal clear display. Perfect for data visualization work."
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "name": "Webcam HD Pro",
+      "category": "Accessories",
+      "price": 79.99,
+      "inStock": true,
+      "specifications": {
+        "resolution": "1080p",
+        "frameRate": "30fps",
+        "microphone": "Built-in dual microphone",
+        "mounting": "Universal clip"
+      },
+      "reviews": [
+        {
+          "userId": 5,
+          "rating": 4,
+          "comment": "Good video quality for video calls. Audio could be better."
+        }
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "orderId": "ORD-2025-001",
+      "userId": 1,
+      "items": [
+        {"productId": 101, "quantity": 1, "price": 1299.99},
+        {"productId": 102, "quantity": 1, "price": 29.99},
+        {"productId": 103, "quantity": 1, "price": 89.99}
+      ],
+      "totalAmount": 1419.97,
+      "status": "delivered",
+      "orderDate": "2025-01-01T10:30:00Z",
+      "deliveryDate": "2025-01-05T14:20:00Z"
+    },
+    {
+      "orderId": "ORD-2025-002",
+      "userId": 3,
+      "items": [
+        {"productId": 104, "quantity": 1, "price": 449.99}
+      ],
+      "totalAmount": 449.99,
+      "status": "processing",
+      "orderDate": "2025-01-10T09:15:00Z",
+      "deliveryDate": null
+    },
+    {
+      "orderId": "ORD-2025-003",
+      "userId": 7,
+      "items": [
+        {"productId": 103, "quantity": 2, "price": 89.99},
+        {"productId": 105, "quantity": 1, "price": 79.99}
+      ],
+      "totalAmount": 259.97,
+      "status": "shipped",
+      "orderDate": "2025-01-08T16:45:00Z",
+      "deliveryDate": null
+    }
+  ],
+  "statistics": {
+    "totalUsers": 10,
+    "totalProducts": 5,
+    "totalOrders": 3,
+    "averageOrderValue": 1043.31,
+    "topSellingProduct": "Laptop Pro 15",
+    "mostActiveUser": "Alice Johnson"
+  }
+}
