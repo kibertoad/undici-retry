@@ -1,11 +1,14 @@
-export type { CreateDelayToNextMinuteResolverConfig } from './lib/delayResolvers'
-export { createDelayToNextMinuteResolver } from './lib/delayResolvers'
 export type {
   DefaultRetryResolverOptions,
-  RetryableStatusCode,
   RetryDecision,
 } from './lib/defaultRetryResolver'
-export { DefaultRetryResolver, createDefaultRetryResolver } from './lib/defaultRetryResolver'
+export {
+  createDefaultRetryResolver,
+  DefaultRetryResolver,
+  parseRetryAfterHeader,
+} from './lib/defaultRetryResolver'
+export type { CreateDelayToNextMinuteResolverConfig } from './lib/delayResolvers'
+export { createDelayToNextMinuteResolver } from './lib/delayResolvers'
 export type { Either } from './lib/either'
 export {
   isInternalRequestError,
@@ -16,6 +19,7 @@ export type { InternalRequestError } from './lib/UndiciRetryRequestError'
 export { UndiciRetryRequestError } from './lib/UndiciRetryRequestError'
 export { UnprocessableResponseError } from './lib/UnprocessableResponseError'
 export type {
+  DEFAULT_RETRYABLE_STATUS_CODES,
   DelayResolver,
   RequestParams,
   RequestResult,

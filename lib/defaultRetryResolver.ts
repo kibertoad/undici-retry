@@ -4,6 +4,50 @@ import type { Either } from './either'
 const DIGITS_ONLY_REGEX = /^\d+$/
 
 /**
+ * Parses a Retry-After header value into a delay in milliseconds.
+ * Supports both delta-seconds format ("120") and HTTP-date format.
+ *
+ * @param retryAfter - The Retry-After header value
+ * @returns Either an error message or the delay in milliseconds
+ *
+ * @example
+ * ```typescript
+ * const result = parseRetryAfterHeader('120')
+ * if (result.result !== undefined) {
+ *   await setTimeout(result.result)
+ * }
+ * ```
+ */
+export function parseRetryAfterHeader(retryAfter: string): Either<string, number> {
+  // Defensive check: callers ensure retryAfter is truthy
+  /* v8 ignore next 3 */
+  if (!retryAfter) {
+    return { error: 'No Retry-After header provided' }
+  }
+
+  if (retryAfter.match(DIGITS_ONLY_REGEX)) {
+    const seconds = Number.parseInt(retryAfter, 10)
+    // Defensive check: DIGITS_ONLY_REGEX ensures valid numeric string
+    /* v8 ignore next 3 */
+    if (isNaN(seconds) || seconds < 0) {
+      return { error: 'Invalid Retry-After seconds value' }
+    }
+    return { result: seconds * 1000 }
+  }
+
+  const date = new Date(retryAfter)
+  if (!isNaN(date.getTime())) {
+    const delay = date.getTime() - Date.now()
+    if (delay < 0) {
+      return { error: 'Retry-After date is in the past' }
+    }
+    return { result: delay }
+  }
+
+  return { error: 'Unknown Retry-After format' }
+}
+
+/**
  * Represents a decision about whether to retry a failed HTTP request.
  */
 export type RetryDecision = {
@@ -14,22 +58,6 @@ export type RetryDecision = {
   /** Human-readable explanation of the decision */
   reason?: string
 }
-
-/**
- * HTTP status codes that are commonly retryable.
- * These represent temporary failures that may succeed on retry.
- */
-export type RetryableStatusCode = 408 | 425 | 429 | 500 | 502 | 503 | 504
-
-const DEFAULT_RETRYABLE_STATUS_CODES: readonly RetryableStatusCode[] = [
-  408, // Request Timeout
-  425, // Too Early
-  429, // Too Many Requests
-  500, // Internal Server Error
-  502, // Bad Gateway
-  503, // Service Unavailable
-  504, // Gateway Timeout
-] as const
 
 const DEFAULT_BASE_DELAY = 100
 const DEFAULT_MAX_DELAY = 60000
@@ -49,8 +77,6 @@ export interface DefaultRetryResolverOptions {
   exponentialBackoff?: boolean
   /** Whether to respect Retry-After headers for 429 and 503 responses (default: true) */
   respectRetryAfter?: boolean
-  /** HTTP status codes that should trigger retry (default: [408, 425, 429, 500, 502, 503, 504]) */
-  retryableStatusCodes?: readonly number[]
 }
 
 /**
@@ -80,12 +106,11 @@ export interface DefaultRetryResolverOptions {
  * ```
  */
 export class DefaultRetryResolver {
-  private readonly baseDelay: number
-  private readonly maxDelay: number
-  private readonly maxJitter: number
+  public readonly baseDelay: number
+  public readonly maxDelay: number
+  public readonly maxJitter: number
   private readonly exponentialBackoff: boolean
-  private readonly respectRetryAfter: boolean
-  private readonly retryableStatusCodes: readonly number[]
+  public readonly respectRetryAfter: boolean
 
   /**
    * Creates a new DefaultRetryResolver instance.
@@ -98,7 +123,6 @@ export class DefaultRetryResolver {
     this.maxJitter = options.maxJitter ?? DEFAULT_MAX_JITTER
     this.exponentialBackoff = options.exponentialBackoff ?? true
     this.respectRetryAfter = options.respectRetryAfter ?? true
-    this.retryableStatusCodes = options.retryableStatusCodes ?? DEFAULT_RETRYABLE_STATUS_CODES
   }
 
   /**
@@ -116,10 +140,14 @@ export class DefaultRetryResolver {
    * }
    * ```
    */
-  resolveRetryDecision(response: Dispatcher.ResponseData, attemptNumber: number): RetryDecision {
+  resolveRetryDecision(
+    response: Dispatcher.ResponseData,
+    attemptNumber: number,
+    retryableResponseCodes: readonly number[],
+  ): RetryDecision {
     const { statusCode, headers } = response
 
-    if (!this.isRetryableStatusCode(statusCode)) {
+    if (!this.isRetryableStatusCode(statusCode, retryableResponseCodes)) {
       return {
         shouldRetry: false,
         reason: `Status code ${statusCode} is not retryable`,
@@ -142,8 +170,11 @@ export class DefaultRetryResolver {
     }
   }
 
-  private isRetryableStatusCode(statusCode: number): boolean {
-    return this.retryableStatusCodes.indexOf(statusCode) !== -1
+  public isRetryableStatusCode(
+    statusCode: number,
+    retryableStatusCodes: readonly number[],
+  ): boolean {
+    return retryableStatusCodes.indexOf(statusCode) !== -1
   }
 
   private calculateDelay(
@@ -179,29 +210,17 @@ export class DefaultRetryResolver {
     return { result: Math.min(calculatedDelay, this.maxDelay) }
   }
 
-  private parseRetryAfterHeader(retryAfter: string): Either<string, number> {
-    if (!retryAfter) {
-      return { error: 'No Retry-After header provided' }
-    }
-
-    if (retryAfter.match(DIGITS_ONLY_REGEX)) {
-      const seconds = Number.parseInt(retryAfter, 10)
-      if (isNaN(seconds) || seconds < 0) {
-        return { error: 'Invalid Retry-After seconds value' }
-      }
-      return { result: seconds * 1000 }
-    }
-
-    const date = new Date(retryAfter)
-    if (!isNaN(date.getTime())) {
-      const delay = date.getTime() - Date.now()
-      if (delay < 0) {
-        return { error: 'Retry-After date is in the past' }
-      }
-      return { result: delay }
-    }
-
-    return { error: 'Unknown Retry-After format' }
+  /**
+   * Parses a Retry-After header value into a delay in milliseconds.
+   * Delegates to the standalone parseRetryAfterHeader function.
+   *
+   * @param retryAfter - The Retry-After header value
+   * @returns Either an error message or the delay in milliseconds
+   *
+   * @deprecated Use the standalone parseRetryAfterHeader function instead
+   */
+  public parseRetryAfterHeader(retryAfter: string): Either<string, number> {
+    return parseRetryAfterHeader(retryAfter)
   }
 
   private calculateBackoffDelay(attemptNumber: number): number {
@@ -262,28 +281,32 @@ export class DefaultRetryResolver {
  */
 export function createDefaultRetryResolver(
   options?: DefaultRetryResolverOptions,
-): (response: Dispatcher.ResponseData) => number | undefined {
+): (
+  response: Dispatcher.ResponseData,
+  retryableResponseCodes: readonly number[],
+) => number | undefined {
   const resolver = new DefaultRetryResolver(options)
 
-  return (response: Dispatcher.ResponseData): number | undefined => {
+  return (
+    response: Dispatcher.ResponseData,
+    retryableResponseCodes: readonly number[],
+  ): number | undefined => {
     // Check if status code is retryable
-    if (!resolver['isRetryableStatusCode'](response.statusCode)) {
+    if (!resolver.isRetryableStatusCode(response.statusCode, retryableResponseCodes)) {
       return -1
     }
 
-    // For 429 and 503, respect Retry-After if enabled
+    // For 429 and 503 (per HTTP spec these are the ones that can have this header), respect Retry-After if enabled
     const shouldRespectRetryAfter =
-      resolver['respectRetryAfter'] &&
+      resolver.respectRetryAfter &&
       (response.statusCode === 429 || response.statusCode === 503) &&
       response.headers['retry-after']
 
     if (shouldRespectRetryAfter) {
-      const retryAfterDelay = resolver['parseRetryAfterHeader'](
-        response.headers['retry-after'] as string
-      )
+      const retryAfterDelay = parseRetryAfterHeader(response.headers['retry-after'] as string)
 
       if (retryAfterDelay.result !== undefined) {
-        if (retryAfterDelay.result > resolver['maxDelay']) {
+        if (retryAfterDelay.result > resolver.maxDelay) {
           // Delay exceeds max, abort retry
           return -1
         }
@@ -293,13 +316,13 @@ export function createDefaultRetryResolver(
     }
 
     // Use baseDelay with jitter
-    let delay = resolver['baseDelay']
+    let delay = resolver.baseDelay
 
-    if (resolver['maxJitter'] > 0) {
-      const jitter = Math.random() * resolver['maxJitter']
+    if (resolver.maxJitter > 0) {
+      const jitter = Math.random() * resolver.maxJitter
       delay += jitter
     }
 
-    return Math.min(delay, resolver['maxDelay'])
+    return Math.min(delay, resolver.maxDelay)
   }
 }

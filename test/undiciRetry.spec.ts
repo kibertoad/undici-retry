@@ -4,6 +4,7 @@ import { getLocal } from 'mockttp'
 import type { Dispatcher } from 'undici'
 import { Client, Pool } from 'undici'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createDefaultRetryResolver } from '../lib/defaultRetryResolver'
 import {
   isInternalRequestError,
   isRequestResult,
@@ -33,6 +34,11 @@ const request: Dispatcher.RequestOptions = {
 
 const mockServer = getLocal()
 
+const instantRetryResolver = createDefaultRetryResolver({
+  baseDelay: 0,
+  maxDelay: 0,
+})
+
 describe('undiciRetry', () => {
   let client: Client
   let pool: Pool
@@ -54,7 +60,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -85,8 +91,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
-        statusCodesToRetry: [500, 502, 503],
+        delayResolver: instantRetryResolver,
         retryOnTimeout: false,
       })
 
@@ -105,7 +110,7 @@ describe('undiciRetry', () => {
           request,
           {
             maxAttempts: 3,
-            delayBetweenAttemptsInMsecs: 0,
+            delayResolver: instantRetryResolver,
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
@@ -134,7 +139,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 50,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: false,
         },
@@ -156,7 +161,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 0,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: false,
         },
@@ -185,7 +190,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 0,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: false,
         },
@@ -207,7 +212,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -223,7 +228,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -246,7 +251,7 @@ describe('undiciRetry', () => {
         },
         {
           maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 0,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: true,
         },
@@ -273,7 +278,7 @@ describe('undiciRetry', () => {
           },
           {
             maxAttempts: 3,
-            delayBetweenAttemptsInMsecs: 0,
+            delayResolver: instantRetryResolver,
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
@@ -295,7 +300,7 @@ describe('undiciRetry', () => {
           request,
           {
             maxAttempts: 2,
-            delayBetweenAttemptsInMsecs: 10,
+            delayResolver: instantRetryResolver,
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
@@ -326,7 +331,7 @@ describe('undiciRetry', () => {
           request,
           {
             maxAttempts: 2,
-            delayBetweenAttemptsInMsecs: 10,
+            delayResolver: instantRetryResolver,
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
@@ -345,7 +350,7 @@ describe('undiciRetry', () => {
 
       const result = await sendWithRetry(client, request, {
         maxAttempts: 2,
-        delayBetweenAttemptsInMsecs: 10,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -360,7 +365,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 2,
-          delayBetweenAttemptsInMsecs: 10,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: false,
         },
@@ -387,7 +392,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 10,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503], // 404 not in list, so won't retry
           retryOnTimeout: false,
         },
@@ -415,7 +420,7 @@ describe('undiciRetry', () => {
           request,
           {
             maxAttempts: 2,
-            delayBetweenAttemptsInMsecs: 10,
+            delayResolver: instantRetryResolver,
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
@@ -445,7 +450,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 3,
-          delayBetweenAttemptsInMsecs: 0,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: false,
         },
@@ -469,7 +474,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(pool, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -541,7 +546,6 @@ describe('undiciRetry', () => {
         maxAttempts: 3,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
-        delayBetweenAttemptsInMsecs: 30,
         delayResolver: () => {
           return undefined
         },
@@ -592,17 +596,15 @@ describe('undiciRetry', () => {
 
     it('falls back to default delay when Retry-After has invalid format', async () => {
       await mockServer.forGet('/').thenReply(429, 'Rate limited', {
-        // @ts-expect-error - invalid format that can't be parsed
         'Retry-After': 'invalid-format-abc',
       })
       await mockServer.forGet('/').thenReply(200, 'Success')
 
       const response = await sendWithRetry(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 10, // Should use this since Retry-After is invalid
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [429],
         retryOnTimeout: false,
-        respectRetryAfter: true,
       })
 
       if (response.error) {
@@ -620,7 +622,9 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetry(client, request, {
         ...DEFAULT_RETRY_CONFIG,
-        respectRetryAfter: false,
+        delayResolver: createDefaultRetryResolver({
+          respectRetryAfter: false,
+        }),
       })
 
       if (!response.result) {
@@ -652,7 +656,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -673,7 +677,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -691,7 +695,7 @@ describe('undiciRetry', () => {
 
       const result = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 2,
-        delayBetweenAttemptsInMsecs: 10,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -708,7 +712,7 @@ describe('undiciRetry', () => {
 
       const result = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 2,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -724,7 +728,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetryReturnStream(pool, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -745,7 +749,7 @@ describe('undiciRetry', () => {
           request,
           {
             maxAttempts: 2,
-            delayBetweenAttemptsInMsecs: 10,
+            delayResolver: instantRetryResolver,
             statusCodesToRetry: [500, 502, 503],
             retryOnTimeout: false,
           },
@@ -769,7 +773,7 @@ describe('undiciRetry', () => {
         request,
         {
           maxAttempts: 2,
-          delayBetweenAttemptsInMsecs: 10,
+          delayResolver: instantRetryResolver,
           statusCodesToRetry: [500, 502, 503],
           retryOnTimeout: false,
         },
@@ -793,7 +797,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -851,7 +855,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })
@@ -878,7 +882,7 @@ describe('undiciRetry', () => {
 
       const response = await sendWithRetryReturnStream(client, request, {
         maxAttempts: 3,
-        delayBetweenAttemptsInMsecs: 0,
+        delayResolver: instantRetryResolver,
         statusCodesToRetry: [500, 502, 503],
         retryOnTimeout: false,
       })

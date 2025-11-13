@@ -11,7 +11,7 @@ describe('DefaultRetryResolver Integration', () => {
   beforeAll(async () => {
     const { createServer } = await import('node:http')
 
-    server = createServer((req, res) => {
+    server = createServer((_req, res) => {
       requestCount++
 
       // First request fails with 503, second succeeds
@@ -73,7 +73,7 @@ describe('DefaultRetryResolver Integration', () => {
     const { createServer } = await import('node:http')
 
     let localRequestCount = 0
-    const localServer = createServer((req, res) => {
+    const localServer = createServer((_req, res) => {
       localRequestCount++
       // Always return 429 with a long Retry-After
       res.writeHead(429, {
