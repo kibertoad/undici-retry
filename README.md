@@ -70,9 +70,9 @@ If you need to work with the response body as a stream (without consuming it imm
 import { sendWithRetryReturnStream } from 'undici-retry';
 import type { StreamRequestParams } from 'undici-retry';
 
-// Note: StreamRequestParams only includes requestLabel and throwOnInternalError
+// Note: StreamedResponseRequestParams only includes requestLabel and throwOnInternalError
 // It does NOT include blobBody and safeParseJson since the body is returned as a stream
-const streamParams: StreamRequestParams = {
+const streamParams: StreamedResponseRequestParams = {
     requestLabel: 'download-file',
     throwOnInternalError: false,
 }

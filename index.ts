@@ -14,7 +14,7 @@ export type {
   RequestParams,
   RequestResult,
   RetryConfig,
-  StreamRequestParams,
+  StreamedResponseRequestParams,
 } from './lib/undiciRetry'
 export {
   DEFAULT_RETRY_CONFIG,

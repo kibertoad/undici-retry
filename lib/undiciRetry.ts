@@ -36,7 +36,7 @@ export type RequestParams = {
   throwOnInternalError?: boolean
 }
 
-export type StreamRequestParams = Omit<RequestParams, 'blobBody' | 'safeParseJson'>
+export type StreamedResponseRequestParams = Omit<RequestParams, 'blobBody' | 'safeParseJson'>
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 3,
@@ -217,7 +217,7 @@ export function sendWithRetry<T, const ConfigType extends RequestParams = Reques
 }
 
 export function sendWithRetryReturnStream<
-  const ConfigType extends StreamRequestParams = StreamRequestParams,
+  const ConfigType extends StreamedResponseRequestParams = StreamedResponseRequestParams,
 >(
   client: Dispatcher,
   request: Dispatcher.RequestOptions,
