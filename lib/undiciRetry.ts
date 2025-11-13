@@ -29,6 +29,7 @@ export type RequestResult<T> = {
 
 export type DelayResolver = (
   response: Dispatcher.ResponseData,
+  attemptNumber: number,
   statusCodesToRetry: readonly number[],
 ) => number | undefined
 
@@ -128,7 +129,7 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
       }
 
       // Determine retry delay using the delayResolver
-      const delay = effectiveDelayResolver(response, statusCodesToRetry) ?? 0
+      const delay = effectiveDelayResolver(response, attemptsSoFar, statusCodesToRetry) ?? 0
 
       // Do not retry if delayResolver returns -1
       if (delay === -1) {

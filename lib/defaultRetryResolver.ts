@@ -109,7 +109,7 @@ export class DefaultRetryResolver {
   public readonly baseDelay: number
   public readonly maxDelay: number
   public readonly maxJitter: number
-  private readonly exponentialBackoff: boolean
+  public readonly exponentialBackoff: boolean
   public readonly respectRetryAfter: boolean
 
   /**
@@ -245,17 +245,14 @@ export class DefaultRetryResolver {
  * Creates a DelayResolver function that determines retry delays for HTTP requests.
  *
  * This factory function returns a DelayResolver compatible with the undici-retry library's
- * DelayResolver interface. Since DelayResolver doesn't receive attempt numbers, this
- * implementation uses a fixed baseDelay rather than exponential backoff.
- *
- * For exponential backoff support, use the DefaultRetryResolver class directly.
+ * DelayResolver interface, with full support for exponential or linear backoff strategies.
  *
  * @param options - Configuration options for retry behavior
  * @param options.baseDelay - Base delay in milliseconds (default: 100)
  * @param options.maxDelay - Maximum delay in milliseconds (default: 60000)
  * @param options.maxJitter - Maximum random jitter to add in milliseconds (default: 100)
+ * @param options.exponentialBackoff - Use exponential backoff (true) or linear (false) (default: true)
  * @param options.respectRetryAfter - Whether to respect Retry-After headers for 429/503 (default: true)
- * @param options.retryableStatusCodes - HTTP status codes that should trigger retry (default: [408, 425, 429, 500, 502, 503, 504])
  *
  * @returns A DelayResolver function that returns:
  *   - `number`: delay in milliseconds before retrying
@@ -266,14 +263,16 @@ export class DefaultRetryResolver {
  * ```typescript
  * import { createDefaultRetryResolver } from 'undici-retry'
  *
+ * // Exponential backoff: 100ms, 200ms, 400ms, 800ms, ...
  * const delayResolver = createDefaultRetryResolver({
- *   baseDelay: 200,
+ *   baseDelay: 100,
  *   maxDelay: 30000,
+ *   exponentialBackoff: true,
  *   respectRetryAfter: true
  * })
  *
  * const response = await sendWithRetry(client, request, {
- *   maxAttempts: 3,
+ *   maxAttempts: 5,
  *   statusCodesToRetry: [429, 503],
  *   delayResolver
  * })
@@ -283,13 +282,16 @@ export function createDefaultRetryResolver(
   options?: DefaultRetryResolverOptions,
 ): (
   response: Dispatcher.ResponseData,
+  attemptNumber: number,
   retryableResponseCodes: readonly number[],
 ) => number | undefined {
   const resolver = new DefaultRetryResolver(options)
 
   return (
     response: Dispatcher.ResponseData,
+    attemptNumber: number,
     retryableResponseCodes: readonly number[],
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this is expected
   ): number | undefined => {
     // Check if status code is retryable
     if (!resolver.isRetryableStatusCode(response.statusCode, retryableResponseCodes)) {
@@ -312,11 +314,17 @@ export function createDefaultRetryResolver(
         }
         return retryAfterDelay.result
       }
-      // If Retry-After parsing failed, fall through to use baseDelay
+      // If Retry-After parsing failed, fall through to backoff delay
     }
 
-    // Use baseDelay with jitter
-    let delay = resolver.baseDelay
+    // Calculate delay based on backoff strategy
+    let delay: number
+
+    if (resolver.exponentialBackoff) {
+      delay = resolver.baseDelay * Math.pow(2, attemptNumber - 1)
+    } else {
+      delay = resolver.baseDelay * attemptNumber
+    }
 
     if (resolver.maxJitter > 0) {
       const jitter = Math.random() * resolver.maxJitter

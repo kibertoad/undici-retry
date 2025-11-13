@@ -541,7 +541,7 @@ describe('DefaultRetryResolver', () => {
     it('creates a DelayResolver with default options', () => {
       const delayResolver = createDefaultRetryResolver()
       const response = createMockResponse(429)
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBeDefined()
       expect(typeof delay).toBe('number')
@@ -556,32 +556,58 @@ describe('DefaultRetryResolver', () => {
       })
 
       const response418 = createMockResponse(418)
-      const delay418 = delayResolver(response418, [418])
+      const delay418 = delayResolver(response418, 1, [418])
       expect(delay418).toBe(200)
 
       const response429 = createMockResponse(429)
-      const delay429 = delayResolver(response429, [418])
+      const delay429 = delayResolver(response429, 1, [418])
       expect(delay429).toBe(-1) // Not in retryableStatusCodes
     })
 
-    it('uses fixed baseDelay (no exponential backoff)', () => {
+    it('supports exponential backoff with attempt numbers', () => {
       const delayResolver = createDefaultRetryResolver({
         baseDelay: 100,
         maxJitter: 0,
-        exponentialBackoff: true, // This is ignored in DelayResolver mode
+        exponentialBackoff: true,
       })
 
       const response = createMockResponse(500)
 
-      // DelayResolver doesn't receive attemptNumber, so it always uses baseDelay
-      const delay1 = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      // Exponential backoff: 100ms, 200ms, 400ms, 800ms, ...
+      const delay1 = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
       expect(delay1).toBe(100)
 
-      const delay2 = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
-      expect(delay2).toBe(100)
+      const delay2 = delayResolver(response, 2, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay2).toBe(200)
 
-      const delay3 = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
-      expect(delay3).toBe(100)
+      const delay3 = delayResolver(response, 3, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay3).toBe(400)
+
+      const delay4 = delayResolver(response, 4, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay4).toBe(800)
+    })
+
+    it('supports linear backoff with attempt numbers', () => {
+      const delayResolver = createDefaultRetryResolver({
+        baseDelay: 100,
+        maxJitter: 0,
+        exponentialBackoff: false,
+      })
+
+      const response = createMockResponse(500)
+
+      // Linear backoff: 100ms, 200ms, 300ms, 400ms, ...
+      const delay1 = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay1).toBe(100)
+
+      const delay2 = delayResolver(response, 2, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay2).toBe(200)
+
+      const delay3 = delayResolver(response, 3, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay3).toBe(300)
+
+      const delay4 = delayResolver(response, 4, DEFAULT_RETRYABLE_STATUS_CODES)
+      expect(delay4).toBe(400)
     })
 
     it('returns -1 for non-retryable status codes', () => {
@@ -590,7 +616,7 @@ describe('DefaultRetryResolver', () => {
 
       for (const statusCode of testCases) {
         const response = createMockResponse(statusCode)
-        const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+        const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
         expect(delay).toBe(-1)
       }
     })
@@ -598,7 +624,7 @@ describe('DefaultRetryResolver', () => {
     it('respects Retry-After header for 429', () => {
       const delayResolver = createDefaultRetryResolver()
       const response = createMockResponse(429, { 'retry-after': '5' })
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBe(5000)
     })
@@ -606,7 +632,7 @@ describe('DefaultRetryResolver', () => {
     it('respects Retry-After header for 503', () => {
       const delayResolver = createDefaultRetryResolver()
       const response = createMockResponse(503, { 'retry-after': '3' })
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBe(3000)
     })
@@ -614,7 +640,7 @@ describe('DefaultRetryResolver', () => {
     it('returns -1 when Retry-After exceeds maxDelay', () => {
       const delayResolver = createDefaultRetryResolver({ maxDelay: 2000 })
       const response = createMockResponse(429, { 'retry-after': '5' })
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBe(-1)
     })
@@ -625,7 +651,7 @@ describe('DefaultRetryResolver', () => {
         maxJitter: 0,
       })
       const response = createMockResponse(429, { 'retry-after': 'invalid' })
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBe(100)
     })
@@ -637,7 +663,7 @@ describe('DefaultRetryResolver', () => {
         respectRetryAfter: false,
       })
       const response = createMockResponse(429, { 'retry-after': '30' })
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBe(100)
     })
@@ -652,7 +678,7 @@ describe('DefaultRetryResolver', () => {
       const delays = new Set<number>()
 
       for (let i = 0; i < 20; i++) {
-        const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+        const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
         expect(delay).toBeGreaterThanOrEqual(100)
         expect(delay).toBeLessThanOrEqual(150)
         delays.add(delay!)
@@ -671,7 +697,7 @@ describe('DefaultRetryResolver', () => {
       const response = createMockResponse(500)
 
       for (let i = 0; i < 10; i++) {
-        const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+        const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
         expect(delay).toBeLessThanOrEqual(120)
       }
     })
@@ -680,7 +706,7 @@ describe('DefaultRetryResolver', () => {
       const delayResolver = createDefaultRetryResolver()
       const futureDate = '2023-12-31T18:07:06.432Z'
       const response = createMockResponse(429, { 'retry-after': futureDate })
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       expect(delay).toBe(3000)
     })
@@ -699,7 +725,7 @@ describe('DefaultRetryResolver', () => {
         configurable: true,
       })
 
-      const delay = delayResolver(response, DEFAULT_RETRYABLE_STATUS_CODES)
+      const delay = delayResolver(response, 1, DEFAULT_RETRYABLE_STATUS_CODES)
 
       // Should fall back to baseDelay since empty string can't be parsed
       expect(delay).toBe(150)
