@@ -4,7 +4,7 @@ Library for handling retry logic with undici HTTP client
 ## Basic example
 
 ```ts
-import { sendWithRetry } from 'undici-retry';
+import { sendWithRetry, DEFAULT_RETRYABLE_STATUS_CODES } from 'undici-retry';
 import type { RetryConfig, RequestParams} from 'undici-retry'
 import { Client } from 'undici';
 import type { Dispatcher } from 'undici';
@@ -19,13 +19,11 @@ const request: Dispatcher.RequestOptions = {
 
 const retryConfig: RetryConfig = {
     maxAttempts: 3,
-    delayBetweenAttemptsInMsecs: 100,
-    statusCodesToRetry: [429, 500, 502, 503, 504],
-    respectRetryAfter: true, // if 429 is included in "statusCodesToRetry" and this set to true, delay will be automatically calculated from 'Retry-After' header if present. Default is "true"
+    statusCodesToRetry: DEFAULT_RETRYABLE_STATUS_CODES, // [408, 425, 429, 500, 502, 503, 504]
+    retryOnTimeout: false, // If true, will retry within given limits if request times out
 
-    // If true, will retry within given limits if request times out
-    retryOnTimeout: false,
-
+    // Optional: custom delay resolver for advanced retry logic
+    // delayResolver: (response, statusCodesToRetry) => { ... }
 }
 
 const requestParams: RequestParams = {
@@ -37,7 +35,7 @@ const requestParams: RequestParams = {
     // if true, response body will be returned as Blob
     blobBody: false,
 
-    // if set to true, in case of an internal error (e. g. ECONNREFUSED), error will be thrown and not returned within an Either. Default is false. 
+    // if set to true, in case of an internal error (e. g. ECONNREFUSED), error will be thrown and not returned within an Either. Default is false.
     throwOnInternalError: false,
 }
 
@@ -116,28 +114,195 @@ if (result.result) {
 - Error responses still consume the body and return it as text or JSON (since the body must be dumped for retries)
 - **You are responsible for consuming the response body** to avoid connection leaks
 
-## Delay resolvers
+## Custom delay resolvers
 
-You can write custom logic for resolving the retry delay based on response received. E. g.:
+You can write custom logic for resolving the retry delay based on the response received. The `delayResolver` function receives the response, attempt number, and the list of retryable status codes:
 
 ```ts
-const OFFSET = 100
+import type { DelayResolver } from 'undici-retry';
+
+const customDelayResolver: DelayResolver = (response, attemptNumber, statusCodesToRetry) => {
+    // Return number: delay in milliseconds before retrying
+    // Return undefined: use default behavior (no delay)
+    // Return -1: abort retry (do not retry this response)
+
+    if (response.statusCode === 502) {
+        // Exponential backoff for 502 errors
+        return 100 * Math.pow(2, attemptNumber - 1)
+    }
+
+    if (response.statusCode === 503) {
+        return -1 // Do not retry 503 errors
+    }
+
+    return undefined // Fallback to default behavior
+}
 
 const response = await sendWithRetry(client, request, {
     maxAttempts: 3,
     statusCodesToRetry: [502, 503],
-    delayBetweenAttemptsInMsecs: 30,
     retryOnTimeout: false,
-    delayResolver: (response) => {
-        if (response.statusCode === 502) {
-            return 60000 - (now % 60000) + OFFSET // this will wait until next minute
-        }
-
-        if (response.statusCode === 503) {
-            return -1 // Do not retry
-        }
-
-        return undefined // this will fallback to `delayBetweenAttemptsInMsecs` param
-    },
+    delayResolver: customDelayResolver,
 })
+```
+
+### Built-in delay resolver: `createDefaultRetryResolver`
+
+The library provides a sophisticated default delay resolver with exponential backoff, jitter, and Retry-After header support:
+
+```ts
+import { createDefaultRetryResolver } from 'undici-retry';
+
+const delayResolver = createDefaultRetryResolver({
+    baseDelay: 100,              // Base delay in milliseconds (default: 100)
+    maxDelay: 60000,             // Maximum delay cap (default: 60000)
+    maxJitter: 100,              // Random jitter to add (default: 100)
+    exponentialBackoff: true,    // Use exponential backoff (default: true)
+    respectRetryAfter: true,     // Honor Retry-After headers for 429/503 (default: true)
+})
+
+const response = await sendWithRetry(client, request, {
+    maxAttempts: 3,
+    statusCodesToRetry: [429, 500, 502, 503],
+    retryOnTimeout: false,
+    delayResolver,
+})
+```
+
+**Exponential vs Linear Backoff:**
+- **Exponential backoff** (default): delay = baseDelay × 2^(attemptNumber - 1) → 100ms, 200ms, 400ms, 800ms...
+- **Linear backoff**: delay = baseDelay × attemptNumber → 100ms, 200ms, 300ms, 400ms...
+- Both strategies respect `maxDelay` cap and can add random jitter to prevent thundering herd
+
+### Advanced: Using `DefaultRetryResolver` class
+
+For full control with exponential backoff based on attempt numbers:
+
+```ts
+import { DefaultRetryResolver } from 'undici-retry';
+
+const resolver = new DefaultRetryResolver({
+    baseDelay: 100,
+    maxDelay: 5000,
+    exponentialBackoff: true,
+    respectRetryAfter: true,
+})
+
+// Manual retry loop with attempt tracking
+let attemptNumber = 1
+while (attemptNumber <= 3) {
+    const response = await client.request(request)
+
+    if (response.statusCode < 400) {
+        // Success
+        break
+    }
+
+    const decision = resolver.resolveRetryDecision(
+        response,
+        attemptNumber,
+        [429, 500, 502, 503]
+    )
+
+    if (!decision.shouldRetry) {
+        console.log(`Not retrying: ${decision.reason}`)
+        break
+    }
+
+    console.log(`Retrying after ${decision.delay}ms: ${decision.reason}`)
+    await setTimeout(decision.delay)
+    attemptNumber++
+}
+```
+
+### Retry-After header support
+
+Both `createDefaultRetryResolver` and `DefaultRetryResolver` automatically respect `Retry-After` headers for 429 (Too Many Requests) and 503 (Service Unavailable) responses:
+
+- Supports both delta-seconds format: `Retry-After: 120`
+- Supports HTTP-date format: `Retry-After: Wed, 21 Oct 2025 07:28:00 GMT`
+- Aborts retry if delay exceeds `maxDelay`
+- Falls back to base delay if header is invalid
+
+You can parse Retry-After headers manually using the exported utility:
+
+```ts
+import { parseRetryAfterHeader } from 'undici-retry';
+
+const result = parseRetryAfterHeader('120')
+if (result.result !== undefined) {
+    console.log(`Delay: ${result.result}ms`)
+} else {
+    console.log(`Error: ${result.error}`)
+}
+```
+
+## Default retryable status codes
+
+The library exports a constant with commonly retryable HTTP status codes:
+
+```ts
+import { DEFAULT_RETRYABLE_STATUS_CODES } from 'undici-retry';
+
+// DEFAULT_RETRYABLE_STATUS_CODES = [408, 425, 429, 500, 502, 503, 504]
+```
+
+These represent temporary failures that typically succeed on retry:
+- **408** Request Timeout
+- **425** Too Early
+- **429** Too Many Requests
+- **500** Internal Server Error
+- **502** Bad Gateway
+- **503** Service Unavailable
+- **504** Gateway Timeout
+
+## Types
+
+### RetryConfig
+
+```ts
+type RetryConfig = {
+  maxAttempts: number
+  delayResolver?: DelayResolver
+  statusCodesToRetry?: readonly number[]
+  retryOnTimeout: boolean
+}
+```
+
+### DelayResolver
+
+```ts
+type DelayResolver = (
+  response: Dispatcher.ResponseData,
+  attemptNumber: number,
+  statusCodesToRetry: readonly number[],
+) => number | undefined
+```
+
+Parameters:
+- `response`: The HTTP response from undici
+- `attemptNumber`: The current attempt number (1-indexed, so first attempt is 1)
+- `statusCodesToRetry`: List of retryable status codes
+
+Returns:
+- `number`: Delay in milliseconds before retrying
+- `undefined`: Use default behavior (no delay, retry immediately)
+- `-1`: Abort retry (do not retry this response)
+
+### RequestParams
+
+```ts
+type RequestParams = {
+  blobBody?: boolean
+  safeParseJson?: boolean
+  requestLabel?: string
+  throwOnInternalError?: boolean
+}
+```
+
+### StreamedResponseRequestParams
+
+```ts
+type StreamedResponseRequestParams = Omit<RequestParams, 'blobBody' | 'safeParseJson'>
+// Only includes: requestLabel, throwOnInternalError
 ```

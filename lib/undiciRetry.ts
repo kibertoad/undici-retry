@@ -2,11 +2,21 @@ import { setTimeout } from 'node:timers/promises'
 import type { Dispatcher } from 'undici'
 import { errors } from 'undici'
 import type { IncomingHttpHeaders } from 'undici/types/header'
+import { createDefaultRetryResolver } from './defaultRetryResolver'
 import type { Either } from './either'
-import { resolveDelayTime } from './retryAfterResolver'
 import { isUnprocessableResponseError } from './typeGuards'
 import { type InternalRequestError, UndiciRetryRequestError } from './UndiciRetryRequestError'
 import { UnprocessableResponseError } from './UnprocessableResponseError'
+
+export const DEFAULT_RETRYABLE_STATUS_CODES = [
+  408, // Request Timeout
+  425, // Too Early
+  429, // Too Many Requests
+  500, // Internal Server Error
+  502, // Bad Gateway
+  503, // Service Unavailable
+  504, // Gateway Timeout
+] as const
 
 const TIMEOUT_ERRORS = [errors.BodyTimeoutError.name, errors.HeadersTimeoutError.name]
 
@@ -17,16 +27,17 @@ export type RequestResult<T> = {
   requestLabel?: string
 }
 
-export type DelayResolver = (response: Dispatcher.ResponseData) => number | undefined
+export type DelayResolver = (
+  response: Dispatcher.ResponseData,
+  attemptNumber: number,
+  statusCodesToRetry: readonly number[],
+) => number | undefined
 
 export type RetryConfig = {
   maxAttempts: number
-  delayBetweenAttemptsInMsecs?: number
   delayResolver?: DelayResolver
-  statusCodesToRetry: readonly number[]
+  statusCodesToRetry?: readonly number[]
   retryOnTimeout: boolean
-  respectRetryAfter?: boolean
-  maxRetryAfterInMsecs?: number
 }
 
 export type RequestParams = {
@@ -40,18 +51,13 @@ export type StreamedResponseRequestParams = Omit<RequestParams, 'blobBody' | 'sa
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 3,
-  delayBetweenAttemptsInMsecs: 100,
-  statusCodesToRetry: [425, 429, 500, 502, 503, 504],
+  statusCodesToRetry: DEFAULT_RETRYABLE_STATUS_CODES,
   retryOnTimeout: false,
-  respectRetryAfter: true,
-  maxRetryAfterInMsecs: 60000,
 }
 
 export const NO_RETRY_CONFIG: RetryConfig = {
   maxAttempts: 1,
-  delayBetweenAttemptsInMsecs: 0,
   statusCodesToRetry: [],
-  respectRetryAfter: false,
   retryOnTimeout: false,
 }
 
@@ -59,6 +65,11 @@ export const DEFAULT_REQUEST_PARAMS: RequestParams = {
   blobBody: false,
   safeParseJson: false,
 }
+
+/**
+ * Cached default delay resolver created once at module initialization.
+ */
+const DEFAULT_DELAY_RESOLVER = createDefaultRetryResolver()
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this is expected
 async function sendWithRetryInternal<TBody, const ConfigType extends RequestParams = RequestParams>(
@@ -76,6 +87,10 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
   >
 > {
   let attemptsSoFar = 0
+
+  // Use the provided delayResolver or create a default one for backward compatibility
+  const effectiveDelayResolver = retryConfig.delayResolver || DEFAULT_DELAY_RESOLVER
+  const statusCodesToRetry = retryConfig.statusCodesToRetry || DEFAULT_RETRYABLE_STATUS_CODES
 
   while (true) {
     attemptsSoFar++
@@ -96,7 +111,7 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
 
       // Do not retry, return last error response
       if (
-        retryConfig.statusCodesToRetry.indexOf(response.statusCode) === -1 ||
+        statusCodesToRetry.indexOf(response.statusCode) === -1 ||
         attemptsSoFar >= retryConfig.maxAttempts
       ) {
         const resolvedBody = await resolveBody(response, requestParams.requestLabel)
@@ -110,57 +125,28 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
         }
       }
 
-      if (
-        retryConfig.delayBetweenAttemptsInMsecs ||
-        retryConfig.delayResolver ||
-        response.statusCode === 429
-      ) {
-        let delay: number | undefined
+      // Determine retry delay using the delayResolver
+      const delay = effectiveDelayResolver(response, attemptsSoFar, statusCodesToRetry) ?? 0
 
-        // TOO_MANY_REQUESTS
-        if (
-          retryConfig.respectRetryAfter !== false &&
-          response.statusCode === 429 &&
-          'retry-after' in response.headers
-        ) {
-          const delayResolutionResult = resolveDelayTime(
-            response.headers,
-            retryConfig.maxRetryAfterInMsecs,
-          )
-          if (delayResolutionResult.result) {
-            delay = delayResolutionResult.result
-          }
-          if (delayResolutionResult.error === 'max_delay_exceeded') {
-            delay = -1
-          }
+      // Do not retry if delayResolver returns -1
+      if (delay === -1) {
+        const resolvedBody = await resolveBody(response, requestParams.requestLabel)
+        return {
+          error: {
+            body: resolvedBody,
+            headers: response.headers,
+            statusCode: response.statusCode,
+            requestLabel: requestParams.requestLabel,
+          },
         }
+      }
 
-        if (delay === undefined) {
-          delay = retryConfig.delayResolver
-            ? (retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0)
-            : retryConfig.delayBetweenAttemptsInMsecs
-        }
+      // Retry: undici response body always has to be processed or discarded
+      await response.body.dump()
 
-        // Do not retry
-        if (delay === -1) {
-          const resolvedBody = await resolveBody(response, requestParams.requestLabel)
-          return {
-            error: {
-              body: resolvedBody,
-              headers: response.headers,
-              statusCode: response.statusCode,
-              requestLabel: requestParams.requestLabel,
-            },
-          }
-        }
-
-        // retry
-        // undici response body always has to be processed or discarded
-        await response.body.dump()
-
+      // Wait for the determined delay before retrying
+      if (delay > 0) {
         await setTimeout(delay)
-      } else {
-        await response.body.dump()
       }
       // biome-ignore lint/suspicious/noExplicitAny: this is expected
     } catch (err: any) {
@@ -170,6 +156,9 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
         (retryConfig.retryOnTimeout === false && TIMEOUT_ERRORS.indexOf(err.name) !== -1)
       ) {
         if (!requestParams.throwOnInternalError) {
+          // Defensive check: UnprocessableResponseError should not occur in catch block
+          // but if it does, preserve it as-is
+          /* v8 ignore next 4 */
           if (!isUnprocessableResponseError(err)) {
             err.requestLabel = requestParams.requestLabel
             err.isInternalRequestError = true
