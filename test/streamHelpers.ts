@@ -7,7 +7,7 @@ import type { Readable } from 'node:stream'
  * @param stream - The Node.js Readable stream to consume
  * @returns A promise that resolves to the stream content as a string
  */
-export async function consumeStream(stream: Readable): Promise<string> {
+export function consumeStream(stream: Readable): Promise<string> {
   const chunks: Buffer[] = []
 
   return new Promise((resolve, reject) => {
