@@ -68,11 +68,8 @@ export const DEFAULT_REQUEST_PARAMS: RequestParams = {
 
 /**
  * Cached default delay resolver created once at module initialization.
- * Only used when DEFAULT_RETRY_CONFIG is passed directly by reference.
  */
-const DEFAULT_DELAY_RESOLVER = createDefaultRetryResolver({
-  maxJitter: 0,
-})
+const DEFAULT_DELAY_RESOLVER = createDefaultRetryResolver()
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this is expected
 async function sendWithRetryInternal<TBody, const ConfigType extends RequestParams = RequestParams>(
