@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { getLocal } from 'mockttp'
 import type { Dispatcher } from 'undici'
 import { Client, Pool } from 'undici'
@@ -7,7 +9,13 @@ import {
   isRequestResult,
   isUnprocessableResponseError,
 } from '../lib/typeGuards'
-import { DEFAULT_RETRY_CONFIG, NO_RETRY_CONFIG, sendWithRetry } from '../lib/undiciRetry'
+import {
+  DEFAULT_RETRY_CONFIG,
+  NO_RETRY_CONFIG,
+  sendWithRetry,
+  sendWithRetryReturnStream,
+} from '../lib/undiciRetry'
+import { consumeStream } from './streamHelpers'
 
 const baseUrl = 'http://localhost:4000/'
 const JSON_HEADERS = {
@@ -584,6 +592,266 @@ describe('undiciRetry', () => {
         throw new Error('Expected to receive result')
       }
       expect(response.result.statusCode).toBe(200)
+    })
+  })
+
+  describe('sendWithRetryReturnStream', () => {
+    it('returns stream on successful response', async () => {
+      const mockedResponse = 'Stream response data'
+      await mockServer.forGet('/').thenReply(200, 'ok', mockedResponse)
+
+      const response = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+      expect(response.result?.body).toBeDefined()
+
+      // Verify the body is a readable stream by reading from it manually
+      const bodyText = await consumeStream(response.result!.body)
+      expect(bodyText).toEqual(mockedResponse)
+    })
+
+    it('retries on specified status codes and returns stream on success', async () => {
+      await mockServer.forGet('/').thenReply(500, 'A mocked response1')
+      await mockServer.forGet('/').thenReply(502, 'A mocked response2')
+      await mockServer.forGet('/').thenReply(200, 'Success response')
+
+      const response = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+
+      const bodyText = await consumeStream(response.result!.body)
+      expect(bodyText).toEqual('Success response')
+    })
+
+    it('returns error with consumed body on non-retryable error', async () => {
+      await mockServer.forGet('/').thenReply(400, 'status message', 'Bad request error', {})
+      await mockServer.forGet('/').thenReply(200, 'Success response')
+
+      const result = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 2,
+        delayBetweenAttemptsInMsecs: 10,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(result.error).toBeDefined()
+      expect(result!.error!.statusCode).toBe(400)
+      expect(result!.error!.body).toBe('Bad request error')
+    })
+
+    it('returns error when max retries exceeded', async () => {
+      await mockServer.forGet('/').thenReply(500, 'Error 1')
+      await mockServer.forGet('/').thenReply(500, 'Error 2')
+      await mockServer.forGet('/').thenReply(200, 'Success response')
+
+      const result = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 2,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(result.error).toBeDefined()
+      expect(result!.error!.statusCode).toBe(500)
+      expect(result!.error!.body).toBe('Error 2')
+    })
+
+    it('works with Pool', async () => {
+      const mockedResponse = 'Pool stream response'
+      await mockServer.forGet('/').thenReply(200, 'ok', mockedResponse)
+
+      const response = await sendWithRetryReturnStream(pool, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+
+      const bodyText = await consumeStream(response.result!.body)
+      expect(bodyText).toEqual(mockedResponse)
+    })
+
+    it('handles internal errors with throwOnInternalError=true', async () => {
+      expect.assertions(2)
+
+      try {
+        await sendWithRetryReturnStream(
+          new Client('http://127.0.0.1:999'),
+          request,
+          {
+            maxAttempts: 2,
+            delayBetweenAttemptsInMsecs: 10,
+            statusCodesToRetry: [500, 502, 503],
+            retryOnTimeout: false,
+          },
+          {
+            throwOnInternalError: true,
+            requestLabel: 'stream-label',
+          },
+        )
+      } catch (err) {
+        if (!isInternalRequestError(err)) {
+          throw new Error('Invalid error type')
+        }
+        expect(err.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
+        expect(err.requestLabel).toBe('stream-label')
+      }
+    })
+
+    it('returns internal errors with throwOnInternalError=false', async () => {
+      const result = await sendWithRetryReturnStream(
+        new Client('http://127.0.0.1:999'),
+        request,
+        {
+          maxAttempts: 2,
+          delayBetweenAttemptsInMsecs: 10,
+          statusCodesToRetry: [500, 502, 503],
+          retryOnTimeout: false,
+        },
+        {
+          requestLabel: 'stream-label',
+          throwOnInternalError: false,
+        },
+      )
+
+      if (!isInternalRequestError(result.error)) {
+        throw new Error('Invalid error type')
+      }
+
+      expect(result.error.message).toBe('connect ECONNREFUSED 127.0.0.1:999')
+      expect(result.error.requestLabel).toBe('stream-label')
+    })
+
+    it('retries on connection closed', async () => {
+      await mockServer.forGet('/').thenCloseConnection()
+      await mockServer.forGet('/').thenReply(200, 'Success after reconnect')
+
+      const response = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+
+      const bodyText = await consumeStream(response.result!.body)
+      expect(bodyText).toEqual('Success after reconnect')
+    })
+
+    it('handles retry-after header correctly', async () => {
+      await mockServer.forGet('/').thenReply(429, 'Rate limited', {
+        // @ts-expect-error
+        'Retry-After': 1,
+      })
+      await mockServer.forGet('/').thenReply(200, 'Success after rate limit')
+
+      const response = await sendWithRetryReturnStream(client, request, DEFAULT_RETRY_CONFIG)
+
+      if (!response.result) {
+        throw new Error('Expected to receive result')
+      }
+      expect(response.result.statusCode).toBe(200)
+
+      const bodyText = await consumeStream(response.result.body)
+      expect(bodyText).toEqual('Success after rate limit')
+    })
+
+    it('returns error if retry-after is too long', async () => {
+      await mockServer.forGet('/').thenReply(429, 'Rate limited for too long', {
+        // @ts-expect-error
+        'Retry-After': 90,
+      })
+      await mockServer.forGet('/').thenReply(200, 'Success')
+
+      const response = await sendWithRetryReturnStream(client, request, DEFAULT_RETRY_CONFIG, {
+        requestLabel: 'stream-retry-label',
+      })
+
+      if (!response.error) {
+        throw new Error('Expected to receive an error')
+      }
+      expect(response.error.statusCode).toBe(429)
+      expect(response.error.requestLabel).toBe('stream-retry-label')
+      expect(response.error.body).toBe('Rate limited for too long')
+    })
+
+    it('handles JSON content as stream without consuming it', async () => {
+      const jsonData = {
+        id: 1,
+        message: 'test',
+      }
+      await mockServer.forGet('/').thenReply(200, 'ok', JSON.stringify(jsonData), JSON_HEADERS)
+
+      const response = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+
+      // The body should be a stream, not parsed JSON - consume it manually
+      const bodyText = await consumeStream(response.result!.body)
+      expect(bodyText).toEqual(JSON.stringify(jsonData))
+
+      // Verify we can parse it manually if needed
+      const parsed = JSON.parse(bodyText)
+      expect(parsed).toEqual(jsonData)
+    })
+
+    it('handles large multi-chunk response as stream', async () => {
+      // Read the large JSON fixture file
+      const fixturePath = join(__dirname, 'fixtures', 'large-response.json')
+      const largeJsonContent = readFileSync(fixturePath, 'utf8')
+
+      // Serve it through the mock server
+      await mockServer.forGet('/').thenReply(200, 'ok', largeJsonContent, JSON_HEADERS)
+
+      const response = await sendWithRetryReturnStream(client, request, {
+        maxAttempts: 3,
+        delayBetweenAttemptsInMsecs: 0,
+        statusCodesToRetry: [500, 502, 503],
+        retryOnTimeout: false,
+      })
+
+      expect(response.result).toBeDefined()
+      expect(response.result?.statusCode).toEqual(200)
+
+      // Consume the stream manually - this will receive multiple chunks for large content
+      const streamedContent = await consumeStream(response.result!.body)
+
+      // Verify the streamed content matches the original file exactly
+      expect(streamedContent).toEqual(largeJsonContent)
+
+      // Verify we can parse the JSON
+      const parsed = JSON.parse(streamedContent)
+      expect(parsed).toHaveProperty('metadata')
+      expect(parsed).toHaveProperty('users')
+      expect(parsed).toHaveProperty('products')
+      expect(parsed).toHaveProperty('orders')
+      expect(parsed).toHaveProperty('statistics')
+      expect(parsed.users).toHaveLength(10)
+      expect(parsed.products).toHaveLength(5)
+      expect(parsed.orders).toHaveLength(3)
     })
   })
 })
