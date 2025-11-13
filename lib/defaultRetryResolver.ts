@@ -25,6 +25,7 @@ export function parseRetryAfterHeader(retryAfter: string): Either<string, number
     return { error: 'No Retry-After header provided' }
   }
 
+  // Check for delta-seconds format ("120")
   if (retryAfter.match(DIGITS_ONLY_REGEX)) {
     const seconds = Number.parseInt(retryAfter, 10)
     // Defensive check: DIGITS_ONLY_REGEX ensures valid numeric string
@@ -35,6 +36,7 @@ export function parseRetryAfterHeader(retryAfter: string): Either<string, number
     return { result: seconds * 1000 }
   }
 
+  // Check for HTTP-date format ("Tue, 07 Nov 1994 08:49:37 GMT")
   const date = new Date(retryAfter)
   if (!isNaN(date.getTime())) {
     const delay = date.getTime() - Date.now()
@@ -183,7 +185,7 @@ export class DefaultRetryResolver {
     statusCode: number,
   ): Either<string, number> {
     if (statusCode === 429 && this.respectRetryAfter && headers['retry-after']) {
-      const retryAfterDelay = this.parseRetryAfterHeader(headers['retry-after'])
+      const retryAfterDelay = parseRetryAfterHeader(headers['retry-after'])
       if (retryAfterDelay.result !== undefined) {
         if (retryAfterDelay.result > this.maxDelay) {
           return {
@@ -195,7 +197,7 @@ export class DefaultRetryResolver {
     }
 
     if (statusCode === 503 && this.respectRetryAfter && headers['retry-after']) {
-      const retryAfterDelay = this.parseRetryAfterHeader(headers['retry-after'])
+      const retryAfterDelay = parseRetryAfterHeader(headers['retry-after'])
       if (retryAfterDelay.result !== undefined) {
         if (retryAfterDelay.result > this.maxDelay) {
           return {
@@ -208,19 +210,6 @@ export class DefaultRetryResolver {
 
     const calculatedDelay = this.calculateBackoffDelay(attemptNumber)
     return { result: Math.min(calculatedDelay, this.maxDelay) }
-  }
-
-  /**
-   * Parses a Retry-After header value into a delay in milliseconds.
-   * Delegates to the standalone parseRetryAfterHeader function.
-   *
-   * @param retryAfter - The Retry-After header value
-   * @returns Either an error message or the delay in milliseconds
-   *
-   * @deprecated Use the standalone parseRetryAfterHeader function instead
-   */
-  public parseRetryAfterHeader(retryAfter: string): Either<string, number> {
-    return parseRetryAfterHeader(retryAfter)
   }
 
   private calculateBackoffDelay(attemptNumber: number): number {
