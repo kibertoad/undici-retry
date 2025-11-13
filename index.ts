@@ -1,5 +1,11 @@
 export type { CreateDelayToNextMinuteResolverConfig } from './lib/delayResolvers'
 export { createDelayToNextMinuteResolver } from './lib/delayResolvers'
+export type {
+  DefaultRetryResolverOptions,
+  RetryableStatusCode,
+  RetryDecision,
+} from './lib/defaultRetryResolver'
+export { DefaultRetryResolver, createDefaultRetryResolver } from './lib/defaultRetryResolver'
 export type { Either } from './lib/either'
 export {
   isInternalRequestError,

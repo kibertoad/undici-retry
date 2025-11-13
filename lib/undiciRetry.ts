@@ -60,6 +60,41 @@ export const DEFAULT_REQUEST_PARAMS: RequestParams = {
   safeParseJson: false,
 }
 
+/**
+ * Creates a default delay resolver that implements the built-in retry logic.
+ * This is used when no custom delayResolver is provided, ensuring backward compatibility.
+ *
+ * The default resolver:
+ * - Respects Retry-After headers for 429 (Too Many Requests) when respectRetryAfter is enabled
+ * - Falls back to the configured delayBetweenAttemptsInMsecs
+ * - Returns -1 if Retry-After exceeds maxRetryAfterInMsecs (to abort retry)
+ */
+function createDefaultDelayResolver(config: RetryConfig): DelayResolver {
+  return (response: Dispatcher.ResponseData): number | undefined => {
+    // Handle 429 with Retry-After header if enabled
+    if (
+      config.respectRetryAfter !== false &&
+      response.statusCode === 429 &&
+      'retry-after' in response.headers
+    ) {
+      const delayResolutionResult = resolveDelayTime(
+        response.headers,
+        config.maxRetryAfterInMsecs,
+      )
+      if (delayResolutionResult.result !== undefined) {
+        return delayResolutionResult.result
+      }
+      if (delayResolutionResult.error === 'max_delay_exceeded') {
+        return -1
+      }
+      // If Retry-After parsing failed, fall through to default delay
+    }
+
+    // Use the configured delay between attempts
+    return config.delayBetweenAttemptsInMsecs
+  }
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this is expected
 async function sendWithRetryInternal<TBody, const ConfigType extends RequestParams = RequestParams>(
   client: Dispatcher,
@@ -76,6 +111,9 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
   >
 > {
   let attemptsSoFar = 0
+
+  // Use the provided delayResolver or create a default one for backward compatibility
+  const effectiveDelayResolver = retryConfig.delayResolver || createDefaultDelayResolver(retryConfig)
 
   while (true) {
     attemptsSoFar++
@@ -110,57 +148,28 @@ async function sendWithRetryInternal<TBody, const ConfigType extends RequestPara
         }
       }
 
-      if (
-        retryConfig.delayBetweenAttemptsInMsecs ||
-        retryConfig.delayResolver ||
-        response.statusCode === 429
-      ) {
-        let delay: number | undefined
+      // Determine retry delay using the delayResolver
+      const delay = effectiveDelayResolver(response) ?? 0
 
-        // TOO_MANY_REQUESTS
-        if (
-          retryConfig.respectRetryAfter !== false &&
-          response.statusCode === 429 &&
-          'retry-after' in response.headers
-        ) {
-          const delayResolutionResult = resolveDelayTime(
-            response.headers,
-            retryConfig.maxRetryAfterInMsecs,
-          )
-          if (delayResolutionResult.result) {
-            delay = delayResolutionResult.result
-          }
-          if (delayResolutionResult.error === 'max_delay_exceeded') {
-            delay = -1
-          }
+      // Do not retry if delayResolver returns -1
+      if (delay === -1) {
+        const resolvedBody = await resolveBody(response, requestParams.requestLabel)
+        return {
+          error: {
+            body: resolvedBody,
+            headers: response.headers,
+            statusCode: response.statusCode,
+            requestLabel: requestParams.requestLabel,
+          },
         }
+      }
 
-        if (delay === undefined) {
-          delay = retryConfig.delayResolver
-            ? (retryConfig.delayResolver(response) ?? retryConfig.delayBetweenAttemptsInMsecs ?? 0)
-            : retryConfig.delayBetweenAttemptsInMsecs
-        }
+      // Retry: undici response body always has to be processed or discarded
+      await response.body.dump()
 
-        // Do not retry
-        if (delay === -1) {
-          const resolvedBody = await resolveBody(response, requestParams.requestLabel)
-          return {
-            error: {
-              body: resolvedBody,
-              headers: response.headers,
-              statusCode: response.statusCode,
-              requestLabel: requestParams.requestLabel,
-            },
-          }
-        }
-
-        // retry
-        // undici response body always has to be processed or discarded
-        await response.body.dump()
-
+      // Wait for the determined delay before retrying
+      if (delay > 0) {
         await setTimeout(delay)
-      } else {
-        await response.body.dump()
       }
       // biome-ignore lint/suspicious/noExplicitAny: this is expected
     } catch (err: any) {
