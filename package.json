@@ -29,7 +29,7 @@
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.8",
     "mockttp": "^4.2.1",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "undici": "^7.16.0",
     "vitest": "^4.0.8"
   },
